@@ -1,0 +1,224 @@
+name: AgriLink Flutter E2E Automation
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      test_tag:
+        description: 'Test tag to run (e.g. @smoke, @regression, @auth)'
+        required: false
+        default: '@smoke'
+      platform_version:
+        description: 'Android platform version for emulator'
+        required: false
+        default: '13'
+
+env:
+  JAVA_VERSION: '17'
+  NODE_VERSION: '20'
+  API_LEVEL: '33'
+  AVD_NAME: 'AgriLink_Pixel6_API33'
+  DEVICE_PROFILE: 'pixel_6'
+  APK_PATH: './app/app-release.apk'
+  APP_PACKAGE: 'com.agrilink.app'
+  APPIUM_VERSION: 'latest'
+
+jobs:
+  e2e-tests:
+    runs-on: macos-latest   # macOS required for Android emulator hardware acceleration
+
+    steps:
+      # ─── 1. Checkout ─────────────────────────────────────
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      # ─── 2. Setup Node.js ────────────────────────────────
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: e2e-tests/package-lock.json
+
+      # ─── 3. Setup Java ───────────────────────────────────
+      - name: ☕ Setup Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # ─── 4. Setup Android SDK ────────────────────────────
+      - name: 🤖 Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 📦 Install Android SDK Packages
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-${{ env.API_LEVEL }}" \
+            "emulator" \
+            "system-images;android-${{ env.API_LEVEL }};google_apis;x86_64" \
+            "build-tools;33.0.0"
+          echo "y" | sdkmanager --licenses
+
+      # ─── 5. Create AVD Emulator ──────────────────────────
+      - name: 📱 Create Android Virtual Device
+        run: |
+          echo "no" | avdmanager create avd \
+            --name "${{ env.AVD_NAME }}" \
+            --package "system-images;android-${{ env.API_LEVEL }};google_apis;x86_64" \
+            --device "${{ env.DEVICE_PROFILE }}" \
+            --force
+
+      # ─── 6. Start Emulator ───────────────────────────────
+      - name: 🚀 Start Android Emulator
+        run: |
+          $ANDROID_SDK_ROOT/emulator/emulator \
+            -avd "${{ env.AVD_NAME }}" \
+            -no-window \
+            -gpu swiftshader_indirect \
+            -no-snapshot \
+            -no-audio \
+            -no-boot-anim &
+
+          echo "Waiting for emulator to boot..."
+          adb wait-for-device
+          adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 3; done'
+          adb shell input keyevent 82
+          echo "✅ Emulator booted"
+
+      # ─── 7. Install Appium 2.x ───────────────────────────
+      - name: 🔧 Install Appium 2.x + Drivers
+        run: |
+          npm install -g appium@${{ env.APPIUM_VERSION }}
+          appium driver install flutter
+          appium driver install uiautomator2
+          appium plugin install execute-driver
+          appium plugin install images
+          echo "✅ Appium installed"
+          appium --version
+
+      # ─── 8. Install E2E Dependencies ─────────────────────
+      - name: 📦 Install E2E Test Dependencies
+        working-directory: e2e-tests
+        run: npm ci
+
+      # ─── 9. Get / Build APK ──────────────────────────────
+      - name: 🏗️ Build Flutter APK
+        working-directory: Agri_Link_Frontend-main
+        run: |
+          flutter pub get
+          flutter build apk --release \
+            --dart-define=BASE_URL=https://agri-link-omib.onrender.com
+          mkdir -p ../e2e-tests/app
+          cp build/app/outputs/flutter-apk/app-release.apk ../e2e-tests/app/
+          echo "✅ APK built and copied"
+
+      # ─── 10. Install APK on Emulator ─────────────────────
+      - name: 📲 Install APK
+        working-directory: e2e-tests
+        run: node scripts/install-apk.js
+        env:
+          APK_PATH: ${{ env.APK_PATH }}
+          APP_PACKAGE: ${{ env.APP_PACKAGE }}
+
+      # ─── 11. Start Appium Server ─────────────────────────
+      - name: ⚙️ Start Appium Server
+        run: |
+          appium --port 4723 --base-path / \
+            --use-plugins execute-driver,images \
+            --log-timestamp --log-no-colors &
+          sleep 5
+          curl -s http://localhost:4723/status | python3 -m json.tool
+          echo "✅ Appium server running"
+
+      # ─── 12. Run E2E Tests ───────────────────────────────
+      - name: 🧪 Run E2E Tests
+        working-directory: e2e-tests
+        run: |
+          TEST_TAG="${{ github.event.inputs.test_tag || '@smoke' }}"
+          echo "Running tests with tag: $TEST_TAG"
+          npm test -- --grep "$TEST_TAG" || true
+        env:
+          DEVICE_NAME: ${{ env.AVD_NAME }}
+          PLATFORM_VERSION: '13.0'
+          APK_PATH: ${{ env.APK_PATH }}
+          APP_PACKAGE: ${{ env.APP_PACKAGE }}
+          BUYER_EMAIL: ${{ secrets.BUYER_EMAIL }}
+          BUYER_PASSWORD: ${{ secrets.BUYER_PASSWORD }}
+          SELLER_EMAIL: ${{ secrets.SELLER_EMAIL }}
+          SELLER_PASSWORD: ${{ secrets.SELLER_PASSWORD }}
+          BACKEND_URL: https://agri-link-omib.onrender.com
+
+      # ─── 13. Generate Reports ────────────────────────────
+      - name: 📊 Generate Mochawesome HTML Report
+        if: always()
+        working-directory: e2e-tests
+        run: |
+          npx mochawesome-merge reports/mochawesome/*.json \
+            -o reports/mochawesome/merged.json || true
+          npx marge reports/mochawesome/merged.json \
+            --reportDir reports/mochawesome \
+            --reportFilename index.html \
+            --charts true \
+            --inline true || true
+          echo "✅ HTML report generated"
+
+      # ─── 14. Upload Artifacts ─────────────────────────────
+      - name: 📤 Upload Excel Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Flutter_E2E_Report_${{ github.run_number }}
+          path: e2e-tests/reports/Flutter_E2E_Report.xlsx
+          retention-days: 30
+
+      - name: 📤 Upload HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mochawesome_HTML_Report_${{ github.run_number }}
+          path: e2e-tests/reports/mochawesome/
+          retention-days: 30
+
+      - name: 📤 Upload Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Screenshots_${{ github.run_number }}
+          path: e2e-tests/reports/screenshots/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: 📤 Upload Failure Evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Failure_Evidence_${{ github.run_number }}
+          path: e2e-tests/reports/failures/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: 📤 Upload Test Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Test_Logs_${{ github.run_number }}
+          path: e2e-tests/reports/logs/
+          retention-days: 14
+
+      # ─── 15. Report Status ────────────────────────────────
+      - name: 📋 Report Summary
+        if: always()
+        run: |
+          echo "## 🌾 AgriLink E2E Results — Run #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 📱 Device | ${{ env.AVD_NAME }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🤖 Android | API ${{ env.API_LEVEL }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏷️ Tag | ${{ github.event.inputs.test_tag || '@smoke' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📦 Artifacts | Uploaded above |" >> $GITHUB_STEP_SUMMARY

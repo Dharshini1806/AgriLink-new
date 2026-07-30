@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: agrilink-backend
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # ── Set these in Render Dashboard → Environment ──────
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: COMMISSION_RATE
+        value: "0.01"
+      - key: ALLOWED_ORIGINS
+        value: "https://agrilink-flutter.vercel.app,https://agri-link-omib.onrender.com"
+    autoDeploy: true

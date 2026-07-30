@@ -1,0 +1,22 @@
+{
+  "spec": "tests/**/*.spec.js",
+  "timeout": 120000,
+  "reporter": "mochawesome",
+  "reporterOptions": {
+    "reportDir": "reports/mochawesome",
+    "reportFilename": "agrilink-e2e-report",
+    "overwrite": true,
+    "html": true,
+    "json": true,
+    "charts": true,
+    "showPassed": true,
+    "showFailed": true,
+    "showSkipped": true,
+    "quiet": false
+  },
+  "require": ["dotenv/config", "./hooks.js"],
+  "exit": true,
+  "bail": false,
+  "retries": 1,
+  "slow": 20000
+}
