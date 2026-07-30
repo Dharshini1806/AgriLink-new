@@ -112,8 +112,9 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen>
                       nextStatus: _nextStatus[status],
                       nextLabel: _nextLabel[status],
                       onStatusUpdate: (String next) async {
+                        final orderId = filtered[i]['id']?.toString() ?? '';
                         final ok = await ref.read(sellerOrdersProvider.notifier)
-                            .updateStatus(filtered[i]['id'] as String, next);
+                            .updateStatus(orderId, next);
                         if (ok && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: Text('Order updated to ${AppFormatters.orderStatus(next)}'),
@@ -245,7 +246,7 @@ class _SellerOrderCardState extends State<_SellerOrderCard> {
             )),
             Consumer(
               builder: (context, ref, _) {
-                final status = order['status'] as String;
+                final status = order['status']?.toString() ?? 'pending';
                 if (status != 'pending' && status != 'confirmed') return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.only(left: 10),
@@ -264,7 +265,8 @@ class _SellerOrderCardState extends State<_SellerOrderCard> {
                       );
                       if (confirm == true) {
                         setState(() => _updating = true);
-                        await ref.read(sellerOrdersProvider.notifier).cancelOrder(order['id'] as String);
+                        final orderId = order['id']?.toString() ?? '';
+                        await ref.read(sellerOrdersProvider.notifier).cancelOrder(orderId);
                         setState(() => _updating = false);
                       }
                     },
