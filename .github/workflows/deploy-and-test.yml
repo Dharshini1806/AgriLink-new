@@ -86,6 +86,9 @@ jobs:
           echo "<html><head><title>AgriLink Production</title></head><body><h1>Welcome to AgriLink Live Deployment</h1></body></html>" > build/web/index.html
       - name: Setup Pages
         uses: actions/configure-pages@v4
+        with:
+          enablement: true
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
