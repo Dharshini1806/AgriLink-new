@@ -5,7 +5,7 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   static const String localUrl = 'http://localhost:10000';
-  static const String renderUrl = 'https://agri-link-omib.onrender.com';
+  static const String renderUrl = 'https://agrilink-new.onrender.com';
 
   static String _resolvedBaseUrl = renderUrl;
 

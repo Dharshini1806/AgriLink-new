@@ -282,6 +282,7 @@ class _SellerOrderCardState extends State<_SellerOrderCard> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.error,
                       side: const BorderSide(color: AppColors.error),
+                      minimumSize: const Size(0, 40),
                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
