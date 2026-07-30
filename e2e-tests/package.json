@@ -26,8 +26,7 @@
   },
   "dependencies": {
     "webdriverio": "^8.38.0",
-    "@wdio/appium-service": "^8.38.0",
-    "appium-flutter-finder": "^1.0.3"
+    "@wdio/appium-service": "^8.38.0"
   },
   "devDependencies": {
     "mocha": "^10.4.0",

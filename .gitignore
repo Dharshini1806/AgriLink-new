@@ -64,3 +64,4 @@ frontend/GoogleService-Info.plist
 *.swp
 *.swo
 .vercel/
+e2e-tests/Test Results/
