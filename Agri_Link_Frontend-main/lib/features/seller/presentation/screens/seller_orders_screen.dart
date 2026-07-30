@@ -18,7 +18,7 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen>
   late final TabController _tabs;
 
   static const _statuses = ['pending', 'confirmed', 'packed', 'out_for_delivery', 'delivered', 'cancelled'];
-  static const _labels   = ['Pending', 'Confirmed', 'Packed', 'On Way', 'Done', 'Cancelled'];
+  static const _labels   = ['Pending', 'Confirmed', 'Packed', 'On Way', 'Delivered', 'Cancelled'];
 
   static const _nextStatus = {
     'pending':          'confirmed',
@@ -248,6 +248,7 @@ class _SellerOrderCardState extends State<_SellerOrderCard> {
               builder: (context, ref, _) {
                 final status = order['status']?.toString() ?? 'pending';
                 if (status != 'pending' && status != 'confirmed') return const SizedBox.shrink();
+                final isPending = status == 'pending';
                 return Padding(
                   padding: const EdgeInsets.only(left: 10),
                   child: OutlinedButton(
@@ -255,11 +256,13 @@ class _SellerOrderCardState extends State<_SellerOrderCard> {
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: const Text('Cancel Order'),
-                          content: const Text('Are you sure you want to cancel this order?'),
+                          title: Text(isPending ? 'Reject Order' : 'Cancel Order'),
+                          content: Text(isPending 
+                              ? 'Are you sure you want to reject this order?'
+                              : 'Are you sure you want to cancel this order?'),
                           actions: [
                             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
-                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yes, Cancel')),
+                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(isPending ? 'Yes, Reject' : 'Yes, Cancel')),
                           ],
                         ),
                       );
@@ -276,7 +279,7 @@ class _SellerOrderCardState extends State<_SellerOrderCard> {
                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                    child: const Text('Cancel', style: TextStyle(fontSize: 13)),
+                    child: Text(isPending ? 'Reject' : 'Cancel', style: const TextStyle(fontSize: 13)),
                   ),
                 );
               }
