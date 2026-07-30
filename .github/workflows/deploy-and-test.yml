@@ -1,7 +1,12 @@
 name: Complete CI/CD Deployment + Live E2E Testing
 
 on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
+
 
 
 permissions:
