@@ -1,10 +1,6 @@
 name: AgriLink Flutter E2E Automation
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
     inputs:
       test_tag:
