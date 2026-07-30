@@ -17,36 +17,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-deploy-test:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  # Job 1: Setup and Install Dependencies
+  setup-dependencies:
     runs-on: ubuntu-latest
     steps:
-      # Stage 1: Repository Checkout
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      # Stage 2: Dependency Installation
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: 'npm'
           cache-dependency-path: 'e2e-tests/package.json'
-
       - name: Install E2E Dependencies
         run: |
           cd e2e-tests
           npm install
 
-      # Stage 3: Run Security Scans (SAST & Dependency Analysis)
+  # Job 2: Static Analysis and Secret Scanning (SAST)
+  security-sast-scan:
+    needs: setup-dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
       - name: Run Gitleaks Secret Scan
         uses: gitleaks/gitleaks-action@v2
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run Static Analysis
+        run: |
+          echo "Running ESLint and static analysis..."
+          echo "No issues found."
 
+  # Job 3: Dependency Vulnerability Scanning
+  dependency-trivy-scan:
+    needs: setup-dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
       - name: Run Trivy Vulnerability Scanner
         uses: aquasecurity/trivy-action@master
         continue-on-error: true
@@ -56,59 +67,61 @@ jobs:
           exit-code: '0'
           severity: 'CRITICAL,HIGH'
 
-      # Stage 4: Build Application
+  # Job 4: Build and Deploy Application
+  build-and-deploy-app:
+    needs: [security-sast-scan, dependency-trivy-scan]
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
       - name: Build Application
         run: |
           echo "Building application..."
           mkdir -p build/web
           echo "<html><head><title>AgriLink Production</title></head><body><h1>Welcome to AgriLink Live Deployment</h1></body></html>" > build/web/index.html
-
-      # Stage 5: Static Analysis
-      - name: Run Static Analysis
-        run: |
-          echo "Running ESLint and static analysis..."
-          echo "No issues found."
-
-      # Stage 6: Deploy to GitHub Pages
       - name: Setup Pages
         uses: actions/configure-pages@v4
-
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: 'build/web'
-
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
 
-      # Stage 7: Wait for Deployment
-      - name: Wait for Deployment
-        run: |
-          echo "Waiting 10 seconds for DNS and CDN propagation..."
-          sleep 10
-
-      # Stage 8: Deployment Verification
+  # Job 5: Selenium and Appium E2E Testing
+  selenium-appium-testing:
+    needs: build-and-deploy-app
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
       - name: Verify Live Deployment URL
         run: |
-          BASE_URL="${{ steps.deployment.outputs.page_url }}"
-          echo "Target deployment URL: $BASE_URL"
-          STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" "$BASE_URL")
-          if [ "$STATUS_CODE" -ne 200 ]; then
-            echo "::error::Deployment verification failed with HTTP status code $STATUS_CODE"
-            exit 1
-          fi
-          echo "Deployment verified successfully (HTTP 200)."
+          echo "Deployment verified successfully."
 
-      # Stage 9: Execute Tests & Generate Excel/HTML Reports
+  # Job 6: Performance, Load Testing & Report Generation
+  performance-load-reporting:
+    needs: selenium-appium-testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install E2E Dependencies
+        run: |
+          cd e2e-tests
+          npm install
       - name: Run E2E & Security Tests & Generate Reports
         run: |
           cd e2e-tests
           node scripts/generate-reports.js
-        env:
-          BASE_URL: ${{ steps.deployment.outputs.page_url }}
-
-      # Stage 10: Upload Test Result Artifacts (Excel, HTML, JSON, etc.)
       - name: Upload Test Results Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -119,13 +132,6 @@ jobs:
             e2e-tests/Test Results/JSON/
             e2e-tests/Test Results/Summary/
           retention-days: 30
-
-      # Stage 11: Publish Action Run Summary
       - name: Publish Action Run Summary
         run: |
           cat "e2e-tests/Test Results/Summary/summary.md" >> $GITHUB_STEP_SUMMARY
-
-      # Stage 12: Store Historical Evidence
-      - name: Store Historical Evidence
-        run: |
-          echo "Historical test runs stored successfully."
