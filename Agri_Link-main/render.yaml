@@ -2,6 +2,7 @@ services:
   - type: web
     name: agrilink-backend
     runtime: node
+    rootDir: Agri_Link-main
     region: singapore
     plan: free
     buildCommand: npm install
