@@ -98,7 +98,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/seller/dashboard', builder: (c, s) => const SellerDashboardScreen()),
           GoRoute(path: '/seller/products',  builder: (c, s) => const SellerProductsScreen()),
-          GoRoute(path: '/seller/orders',    builder: (c, s) => const SellerOrdersScreen()),
+          GoRoute(path: '/seller/orders',    builder: (c, s) => SellerOrdersScreen(initialStatus: s.uri.queryParameters['status'])),
           GoRoute(path: '/seller/analytics', builder: (c, s) => const SellerAnalyticsScreen()),
           GoRoute(path: '/seller/profile',   builder: (c, s) => const ProfileScreen()),
         ],

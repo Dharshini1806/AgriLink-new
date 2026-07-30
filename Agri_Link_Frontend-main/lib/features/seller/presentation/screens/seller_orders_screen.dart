@@ -8,7 +8,8 @@ import '../../../../features/orders/presentation/providers/orders_provider.dart'
 import '../../../../shared/widgets/app_button.dart';
 
 class SellerOrdersScreen extends ConsumerStatefulWidget {
-  const SellerOrdersScreen({super.key});
+  final String? initialStatus;
+  const SellerOrdersScreen({super.key, this.initialStatus});
   @override
   ConsumerState<SellerOrdersScreen> createState() => _SellerOrdersScreenState();
 }
@@ -46,7 +47,12 @@ class _SellerOrdersScreenState extends ConsumerState<SellerOrdersScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: _statuses.length, vsync: this);
+    int initialIndex = 0;
+    if (widget.initialStatus != null) {
+      final idx = _statuses.indexOf(widget.initialStatus!);
+      if (idx >= 0) initialIndex = idx;
+    }
+    _tabs = TabController(length: _statuses.length, vsync: this, initialIndex: initialIndex);
   }
 
   @override

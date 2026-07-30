@@ -89,11 +89,20 @@ class SellerDashboardScreen extends ConsumerWidget {
                 Text('Orders', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 16)),
                 const SizedBox(height: 12),
                 Row(children: [
-                  Expanded(child: _StatCard('Pending',   '${orders['pending'] ?? 0}', Icons.hourglass_top_rounded, AppColors.warning)),
+                  Expanded(child: _StatCard(
+                    'Pending', '${orders['pending'] ?? 0}', Icons.hourglass_top_rounded, AppColors.warning,
+                    onTap: () => context.go('/seller/orders?status=pending'),
+                  )),
                   const SizedBox(width: 10),
-                  Expanded(child: _StatCard('Delivered', '${orders['delivered'] ?? 0}', Icons.check_circle_outlined, AppColors.success)),
+                  Expanded(child: _StatCard(
+                    'Delivered', '${orders['delivered'] ?? 0}', Icons.check_circle_outlined, AppColors.success,
+                    onTap: () => context.go('/seller/orders?status=delivered'),
+                  )),
                   const SizedBox(width: 10),
-                  Expanded(child: _StatCard('Cancelled', '${orders['cancelled'] ?? 0}', Icons.cancel_outlined, AppColors.error)),
+                  Expanded(child: _StatCard(
+                    'Cancelled', '${orders['cancelled'] ?? 0}', Icons.cancel_outlined, AppColors.error,
+                    onTap: () => context.go('/seller/orders?status=cancelled'),
+                  )),
                 ]),
 
                 const SizedBox(height: 20),
@@ -170,21 +179,25 @@ class _StatCard extends StatelessWidget {
   final String label, value;
   final IconData icon;
   final Color color;
-  const _StatCard(this.label, this.value, this.icon, this.color);
+  final VoidCallback? onTap;
+  const _StatCard(this.label, this.value, this.icon, this.color, {this.onTap});
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: AppColors.surface, borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AppColors.border, width: 0.5),
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface, borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(icon, color: color, size: 22),
+        const SizedBox(height: 6),
+        Text(value, style: GoogleFonts.poppins(fontWeight: FontWeight.w800, fontSize: 20, color: color)),
+        Text(label, style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textSecondary)),
+      ]),
     ),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(icon, color: color, size: 22),
-      const SizedBox(height: 6),
-      Text(value, style: GoogleFonts.poppins(fontWeight: FontWeight.w800, fontSize: 20, color: color)),
-      Text(label, style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textSecondary)),
-    ]),
   );
 }
 
