@@ -1,0 +1,67 @@
+# Node/Backend
+Agri_Link-main/node_modules/
+Agri_Link-main/.env
+Agri_Link-main/src/config/firebase-service-account.json
+Agri_Link-main/coverage/
+Agri_Link-main/dist/
+
+# Flutter/Frontend
+Agri_Link_Frontend-main/.dart_tool/
+Agri_Link_Frontend-main/.flutter-plugins
+Agri_Link_Frontend-main/.flutter-plugins-dependencies
+Agri_Link_Frontend-main/.packages
+Agri_Link_Frontend-main/.pub-cache/
+Agri_Link_Frontend-main/.pub/
+Agri_Link_Frontend-main/build/
+Agri_Link_Frontend-main/*.iml
+
+# Android/iOS specific (relative to frontend)
+Agri_Link_Frontend-main/android/**/gradle-wrapper.jar
+Agri_Link_Frontend-main/android/.gradle
+Agri_Link_Frontend-main/android/captures/
+Agri_Link_Frontend-main/android/gradlew
+Agri_Link_Frontend-main/android/gradlew.bat
+Agri_Link_Frontend-main/android/local.properties
+Agri_Link_Frontend-main/android/**/GeneratedPluginRegistrant.java
+Agri_Link_Frontend-main/android/key.properties
+Agri_Link_Frontend-main/android/**/*.keystore
+Agri_Link_Frontend-main/android/**/*.jks
+
+Agri_Link_Frontend-main/ios/**/*.mode1v3
+Agri_Link_Frontend-main/ios/**/*.mode2v3
+Agri_Link_Frontend-main/ios/**/*.moved-aside
+Agri_Link_Frontend-main/ios/**/*.pbxuser
+Agri_Link_Frontend-main/ios/**/*.perspectivev3
+Agri_Link_Frontend-main/ios/**/*sync/
+Agri_Link_Frontend-main/ios/**/.sconsign.dblite
+Agri_Link_Frontend-main/ios/**/.tags*
+Agri_Link_Frontend-main/ios/**/.vagrant/
+Agri_Link_Frontend-main/ios/**/DerivedData/
+Agri_Link_Frontend-main/ios/**/Icon?
+Agri_Link_Frontend-main/ios/**/Pods/
+Agri_Link_Frontend-main/ios/**/.symlinks/
+Agri_Link_Frontend-main/ios/Flutter/App.framework
+Agri_Link_Frontend-main/ios/Flutter/Flutter.framework
+Agri_Link_Frontend-main/ios/Flutter/Flutter.podspec
+Agri_Link_Frontend-main/ios/Flutter/Generated.xcconfig
+Agri_Link_Frontend-main/ios/Flutter/ephemeral/
+Agri_Link_Frontend-main/ios/Flutter/app.flx
+Agri_Link_Frontend-main/ios/Flutter/app.zip
+Agri_Link_Frontend-main/ios/Flutter/flutter_assets/
+Agri_Link_Frontend-main/ios/Flutter/flutter_export_environment.sh
+Agri_Link_Frontend-main/ios/ServiceDefinitions.json
+Agri_Link_Frontend-main/ios/Runner/GeneratedPluginRegistrant.*
+
+Agri_Link_Frontend-main/*.dart_snapshot
+Agri_Link_Frontend-main/google-services.json
+Agri_Link_Frontend-main/GoogleService-Info.plist
+
+# General
+.idea/
+.vscode/
+*.log
+.DS_Store
+*.swp
+*.swo
+.vercel/
+e2e-tests/Test Results/
