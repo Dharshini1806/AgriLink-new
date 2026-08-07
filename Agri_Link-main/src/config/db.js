@@ -37,6 +37,22 @@ async function testConnection() {
   try {
     const res = await client.query('SELECT NOW() as now');
     logger.info(`PostgreSQL connected — server time: ${res.rows[0].now}`);
+    
+    // Create password_resets table if it doesn't exist
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email      VARCHAR(150) NOT NULL,
+        otp        VARCHAR(6) NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_password_resets_email ON password_resets(email);
+    `);
+    logger.info('password_resets table checked/created');
   } finally {
     client.release();
   }

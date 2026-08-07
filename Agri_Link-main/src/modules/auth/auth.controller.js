@@ -44,4 +44,38 @@ async function updateFcmToken(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { register, login, refresh, logout, getMe, updateFcmToken };
+async function forgotPassword(req, res, next) {
+  try {
+    const { email } = req.body;
+    const message = await authService.forgotPassword(email);
+    res.json({ message });
+  } catch (err) { next(err); }
+}
+
+async function verifyOtp(req, res, next) {
+  try {
+    const { email, otp } = req.body;
+    const valid = await authService.verifyOtp(email, otp);
+    res.json({ valid });
+  } catch (err) { next(err); }
+}
+
+async function resetPassword(req, res, next) {
+  try {
+    const { email, otp, password } = req.body;
+    const message = await authService.resetPassword(email, otp, password);
+    res.json({ message });
+  } catch (err) { next(err); }
+}
+
+module.exports = {
+  register,
+  login,
+  refresh,
+  logout,
+  getMe,
+  updateFcmToken,
+  forgotPassword,
+  verifyOtp,
+  resetPassword,
+};

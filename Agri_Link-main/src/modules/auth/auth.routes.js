@@ -42,11 +42,32 @@ const fcmSchema = Joi.object({
   fcmToken: Joi.string().required(),
 });
 
+const forgotPasswordSchema = Joi.object({
+  email: Joi.string().email().lowercase().required(),
+});
+
+const verifyOtpSchema = Joi.object({
+  email: Joi.string().email().lowercase().required(),
+  otp:   Joi.string().length(6).pattern(/^\d+$/).message('OTP must be a 6-digit number').required(),
+});
+
+const resetPasswordSchema = Joi.object({
+  email:    Joi.string().email().lowercase().required(),
+  otp:      Joi.string().length(6).pattern(/^\d+$/).message('OTP must be a 6-digit number').required(),
+  password: Joi.string().min(8).max(72)
+               .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+               .message('Password must contain uppercase, lowercase, and a digit')
+               .required(),
+});
+
 router.post('/register', authLimiter, validate(registerSchema), controller.register);
 router.post('/login',    authLimiter, validate(loginSchema),    controller.login);
 router.post('/refresh',  validate(refreshSchema), controller.refresh);
 router.post('/logout',   verifyToken, controller.logout);
 router.get('/me',        verifyToken, controller.getMe);
 router.patch('/fcm-token', verifyToken, validate(fcmSchema), controller.updateFcmToken);
+router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), controller.forgotPassword);
+router.post('/verify-otp',      authLimiter, validate(verifyOtpSchema),      controller.verifyOtp);
+router.post('/reset-password',  authLimiter, validate(resetPasswordSchema),  controller.resetPassword);
 
 module.exports = router;

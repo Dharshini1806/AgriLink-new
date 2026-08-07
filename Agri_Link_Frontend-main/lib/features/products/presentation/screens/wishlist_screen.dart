@@ -19,7 +19,7 @@ class WishlistScreen extends ConsumerWidget {
     final totalSpacing = (crossAxisCount - 1) * 12.0;
     final cardWidth = (screenWidth - 32.0 - totalSpacing) / crossAxisCount;
     final imageHeight = cardWidth * 3 / 4;
-    const infoHeight = 100.0;
+    const infoHeight = 115.0;
     final childAspectRatio = cardWidth / (imageHeight + infoHeight);
 
     return Scaffold(

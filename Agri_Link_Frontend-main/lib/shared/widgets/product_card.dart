@@ -39,6 +39,15 @@ class ProductCard extends ConsumerWidget {
     }
   }
 
+  String get _gradeEmoji {
+    switch (product['quality_grade']) {
+      case 'A': return '★';
+      case 'B': return '◆';
+      case 'C': return '●';
+      default: return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final imageUrls = (product['image_urls'] as List?)?.cast<String>() ?? [];
@@ -46,69 +55,113 @@ class ProductCard extends ConsumerWidget {
     final price     = AppFormatters.parseDouble(product['price']);
     final rating    = AppFormatters.parseDouble(product['avg_rating']);
     final reviews   = product['review_count'] as int? ?? 0;
-    final distKm    = product['distance_km'] != null ? AppFormatters.parseDouble(product['distance_km']) : null;
+    final distKm    = product['distance_km'] != null
+        ? AppFormatters.parseDouble(product['distance_km'])
+        : null;
     final grade     = product['quality_grade'] as String?;
 
     final String pId = product['id'] as String? ?? '';
     final wishlistState = ref.watch(wishlistProvider);
     final activeWishlisted = isWishlisted ?? wishlistState.ids.contains(pId);
-    final activeWishlistToggle = onWishlistToggle ?? () => ref.read(wishlistProvider.notifier).toggle(product);
+    final activeWishlistToggle =
+        onWishlistToggle ?? () => ref.read(wishlistProvider.notifier).toggle(product);
 
     return GestureDetector(
       onTap: () => context.push('/product/$pId'),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
-            width: isSelected ? 2 : 0.5,
+            color: isSelected ? AppColors.secondary : AppColors.border,
+            width: isSelected ? 2 : 0.8,
           ),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+            BoxShadow(
+              color: (isSelected ? AppColors.secondary : AppColors.primary).withOpacity(0.08),
+              blurRadius: isSelected ? 16 : 10,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Image
+          // ── Image ────────────────────────────────────────────────────────
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
             child: Stack(children: [
               AspectRatio(
                 aspectRatio: 4 / 3,
                 child: imageUrl != null
-                  ? CachedNetworkImage(
-                      imageUrl: '$imageUrl?f_auto,q_auto,w_400',
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(color: AppColors.surfaceVariant,
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 1.5))),
-                      errorWidget: (_, __, ___) => Container(color: AppColors.surfaceVariant,
-                        child: const Icon(Icons.image_not_supported_outlined, color: AppColors.textHint)),
-                    )
-                  : Container(color: AppColors.surfaceVariant,
-                      child: const Center(child: Icon(Icons.agriculture_rounded, color: AppColors.textHint, size: 40))),
+                    ? CachedNetworkImage(
+                        imageUrl: '$imageUrl?f_auto,q_auto,w_400',
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                          color: AppColors.surfaceVariant,
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                                strokeWidth: 1.5, color: AppColors.secondary),
+                          ),
+                        ),
+                        errorWidget: (_, __, ___) => _NoImagePlaceholder(),
+                      )
+                    : _NoImagePlaceholder(),
               ),
-              // Grade badge
-              if (grade != null) Positioned(
-                top: 8, left: 8,
+              // Gradient overlay at bottom of image
+              Positioned(
+                bottom: 0, left: 0, right: 0,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(color: _gradeColor, borderRadius: BorderRadius.circular(20)),
-                  child: Text('Grade $grade', style: GoogleFonts.poppins(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                  height: 40,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter, end: Alignment.topCenter,
+                      colors: [Colors.black.withOpacity(0.35), Colors.transparent],
+                    ),
+                  ),
                 ),
               ),
+              // Grade badge
+              if (grade != null)
+                Positioned(
+                  top: 8, left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _gradeColor,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [BoxShadow(color: _gradeColor.withOpacity(0.4), blurRadius: 6)],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _gradeEmoji,
+                          style: const TextStyle(color: Colors.white, fontSize: 8),
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          'Grade $grade',
+                          style: GoogleFonts.poppins(
+                              color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               // Wishlist & Compare
-              Positioned(top: 6, right: 6,
+              Positioned(
+                top: 6, right: 6,
                 child: Column(children: [
-                  _ActionBtn(
+                  _GlassActionBtn(
                     icon: activeWishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                    color: activeWishlisted ? Colors.red : Colors.white,
+                    color: activeWishlisted ? const Color(0xFFE55252) : Colors.white,
                     onTap: activeWishlistToggle,
                   ),
                   if (showCompareToggle && onCompareToggle != null) ...[
                     const SizedBox(height: 4),
-                    _ActionBtn(
+                    _GlassActionBtn(
                       icon: isSelected ? Icons.compare_arrows_rounded : Icons.add_chart_rounded,
-                      color: isSelected ? AppColors.primary : Colors.white,
+                      color: isSelected ? AppColors.secondary : Colors.white,
                       onTap: onCompareToggle!,
                     ),
                   ],
@@ -116,38 +169,70 @@ class ProductCard extends ConsumerWidget {
               ),
             ]),
           ),
-          // Info
+          // ── Info ─────────────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(product['name'] as String? ?? 'Produce',
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
-              const SizedBox(height: 2),
-              if (showSellerInfo)
-                Text(product['seller_name'] as String? ?? '',
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textSecondary)),
-              const SizedBox(height: 6),
+              Text(
+                product['name'] as String? ?? 'Produce',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.textPrimary),
+              ),
+              if (showSellerInfo) ...[
+                const SizedBox(height: 1),
+                Row(children: [
+                  const Icon(Icons.storefront_outlined, size: 11, color: AppColors.textHint),
+                  const SizedBox(width: 3),
+                  Expanded(
+                    child: Text(
+                      product['seller_name'] as String? ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(fontSize: 10, color: AppColors.textHint),
+                    ),
+                  ),
+                ]),
+              ],
+              const SizedBox(height: 5),
               Row(children: [
                 Expanded(
-                  child: Text(AppFormatters.currency(price),
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.primary)),
+                  child: Text(
+                    AppFormatters.currency(price),
+                    style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.secondary),
+                  ),
                 ),
                 if (showDistance && distKm != null)
-                  Text(AppFormatters.distance(distKm),
-                    style: GoogleFonts.poppins(fontSize: 10, color: AppColors.textHint)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      AppFormatters.distance(distKm),
+                      style: GoogleFonts.poppins(fontSize: 9, color: AppColors.textHint, fontWeight: FontWeight.w500),
+                    ),
+                  ),
               ]),
               if (rating > 0 || reviews > 0) ...[
                 const SizedBox(height: 4),
                 Row(children: [
                   RatingBarIndicator(
                     rating: rating,
-                    itemBuilder: (_, __) => const Icon(Icons.star_rounded, color: Colors.amber),
-                    itemCount: 5, itemSize: 12, unratedColor: AppColors.border,
+                    itemBuilder: (_, __) =>
+                        const Icon(Icons.star_rounded, color: AppColors.secondary),
+                    itemCount: 5,
+                    itemSize: 11,
+                    unratedColor: AppColors.border,
                   ),
                   const SizedBox(width: 4),
-                  Text('($reviews)', style: GoogleFonts.poppins(fontSize: 10, color: AppColors.textHint)),
+                  Text(
+                    '($reviews)',
+                    style: GoogleFonts.poppins(fontSize: 10, color: AppColors.textHint),
+                  ),
                 ]),
               ],
             ]),
@@ -158,22 +243,39 @@ class ProductCard extends ConsumerWidget {
   }
 }
 
-class _ActionBtn extends StatelessWidget {
+class _NoImagePlaceholder extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Container(
+        color: AppColors.surfaceVariant,
+        child: Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.eco_outlined, color: AppColors.border, size: 32),
+            const SizedBox(height: 4),
+            Text('No image', style: GoogleFonts.poppins(fontSize: 10, color: AppColors.textHint)),
+          ]),
+        ),
+      );
+}
+
+class _GlassActionBtn extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const _ActionBtn({required this.icon, required this.color, required this.onTap});
+  const _GlassActionBtn({required this.icon, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 30, height: 30,
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.35),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(icon, color: color, size: 16),
-    ),
-  );
+        onTap: onTap,
+        child: Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.22),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.4), width: 0.8),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
+          ),
+          child: Icon(icon, color: color, size: 16),
+        ),
+      );
 }

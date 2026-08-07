@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const db = require('../../config/db');
 const { ConflictError, UnauthorizedError, NotFoundError } = require('../../middleware/errorHandler');
+const { sendEmail } = require('../../utils/email');
 
 const ACCESS_EXPIRES  = process.env.JWT_ACCESS_EXPIRES  || '15m';
 const REFRESH_EXPIRES = process.env.JWT_REFRESH_EXPIRES || '7d';
@@ -113,6 +114,75 @@ async function updateFcmToken(userId, fcmToken) {
   await db.query('UPDATE users SET fcm_token=$1 WHERE id=$2', [fcmToken, userId]);
 }
 
+async function forgotPassword(email) {
+  const res = await db.query('SELECT id FROM users WHERE email=$1', [email]);
+  if (!res.rows.length) {
+    throw new NotFoundError('Email is not registered');
+  }
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  // Clear previous OTPs
+  await db.query('DELETE FROM password_resets WHERE email=$1', [email]);
+
+  await db.query(
+    'INSERT INTO password_resets (email, otp, expires_at) VALUES ($1, $2, $3)',
+    [email, otp, expiresAt]
+  );
+
+  const text = `Your AgriLink password reset OTP is ${otp}. This code is valid for 10 minutes.`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+      <h2 style="color: #4CAF50; text-align: center;">AgriLink Password Reset</h2>
+      <p>Hello,</p>
+      <p>You requested to reset your password. Use the following 6-digit One-Time Password (OTP) to proceed:</p>
+      <div style="font-size: 24px; font-weight: bold; letter-spacing: 4px; text-align: center; margin: 30px 0; padding: 15px; background-color: #f9f9f9; border-radius: 4px; color: #333;">
+        ${otp}
+      </div>
+      <p style="color: #666; font-size: 12px;">This code is valid for 10 minutes. If you did not request this, please ignore this email.</p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin-top: 30px;" />
+      <p style="text-align: center; color: #999; font-size: 11px;">&copy; ${new Date().getFullYear()} AgriLink. All rights reserved.</p>
+    </div>
+  `;
+
+  await sendEmail({
+    to: email,
+    subject: 'AgriLink Password Reset OTP',
+    text,
+    html,
+  });
+
+  return 'OTP sent successfully';
+}
+
+async function verifyOtp(email, otp) {
+  const res = await db.query(
+    'SELECT id FROM password_resets WHERE email=$1 AND otp=$2 AND expires_at > NOW()',
+    [email, otp]
+  );
+  return res.rows.length > 0;
+}
+
+async function resetPassword(email, otp, newPassword) {
+  const isValid = await verifyOtp(email, otp);
+  if (!isValid) {
+    throw new UnauthorizedError('Invalid or expired OTP code');
+  }
+
+  const password_hash = await bcrypt.hash(newPassword, 12);
+  const res = await db.query(
+    'UPDATE users SET password_hash=$1 WHERE email=$2 RETURNING id',
+    [password_hash, email]
+  );
+  if (!res.rows.length) {
+    throw new NotFoundError('User not found');
+  }
+
+  await db.query('DELETE FROM password_resets WHERE email=$1', [email]);
+  return 'Password reset successfully';
+}
+
 // ── Internal helpers ──────────────────────────────────────
 async function storeRefreshToken(userId, token) {
   const tokenHash = hashToken(token);
@@ -130,4 +200,14 @@ async function storeRefreshToken(userId, token) {
   );
 }
 
-module.exports = { register, login, refreshTokens, logout, getMe, updateFcmToken };
+module.exports = {
+  register,
+  login,
+  refreshTokens,
+  logout,
+  getMe,
+  updateFcmToken,
+  forgotPassword,
+  verifyOtp,
+  resetPassword,
+};
