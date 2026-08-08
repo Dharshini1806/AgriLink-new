@@ -67,10 +67,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final chatState  = ref.watch(chatProvider(widget.orderId));
     final currentUser = ref.watch(authStateProvider).value?.user;
 
-    // Auto-scroll on new message
-    ref.listen(chatProvider(widget.orderId), (_, next) {
+    // Auto-scroll on new message and handle connection errors
+    ref.listen<ChatState>(chatProvider(widget.orderId), (_, next) {
       if (next.messages.isNotEmpty) {
         Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+      }
+      if (next.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        ref.read(chatProvider(widget.orderId).notifier).clearError();
       }
     });
 
@@ -78,11 +88,41 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
-        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Order Chat', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16)),
-          Text('Order #${widget.orderId.length >= 8 ? widget.orderId.substring(0, 8) : widget.orderId}',
-            style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textHint)),
-        ]),
+        title: Row(
+          children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Order Chat', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16)),
+              Text('Order #${widget.orderId.length >= 8 ? widget.orderId.substring(0, 8) : widget.orderId}',
+                style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textHint)),
+            ]),
+            const Spacer(),
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: chatState.isConnected ? Colors.green : Colors.orange,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  if (chatState.isConnected)
+                    BoxShadow(
+                      color: Colors.green.withOpacity(0.4),
+                      blurRadius: 4,
+                      spreadRadius: 2,
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              chatState.isConnected ? 'Connected' : 'Connecting...',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: chatState.isConnected ? Colors.green : Colors.orange,
+              ),
+            ),
+          ],
+        ),
       ),
       body: Column(children: [
         Expanded(

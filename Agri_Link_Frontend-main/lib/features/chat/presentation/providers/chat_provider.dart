@@ -73,7 +73,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       ApiEndpoints.baseUrl,
       IO.OptionBuilder()
           .setTransports(['websocket'])
-          .enableAutoConnect()
+          .disableAutoConnect()
           .setAuth({'token': token})
           .build(),
     );
@@ -81,7 +81,20 @@ class ChatNotifier extends StateNotifier<ChatState> {
     _socket!.onConnect((_) {
       _socket!.emit('join_order_room', _orderId);
       _socket!.emit('mark_read', {'orderId': _orderId});
-      state = state.copyWith(isConnected: true);
+      state = state.copyWith(isConnected: true, error: null);
+    });
+
+    _socket!.onConnectError((data) {
+      state = state.copyWith(
+        isConnected: false,
+        error: 'Connection error: ${data.toString()}',
+      );
+    });
+
+    _socket!.onError((data) {
+      state = state.copyWith(
+        error: 'Socket error: ${data.toString()}',
+      );
     });
 
     _socket!.on('new_message', (data) {
@@ -123,6 +136,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
     });
 
     _socket!.connect();
+  }
+
+  void clearError() {
+    state = state.copyWith(error: null);
   }
 
   void sendMessage(String content) {
