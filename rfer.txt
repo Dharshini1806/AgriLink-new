@@ -1,0 +1,11 @@
+SMTP Host (e.g., smtp.gmail.com)
+SMTP Port (e.g., 587 or 465)
+SMTP User (the email address)
+SMTP Password (or App Password)
+Sender Email (optional, e.g., "AgriLink Support" <no-reply@agrilink.in>)
+
+SMTP Host : smtp.gmail.com
+SMTP Port :587
+SMTP User :dharshinih1806@gmail.com
+SMTP Password :
+Sender Email : "AgriLink Support")
