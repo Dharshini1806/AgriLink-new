@@ -8,4 +8,4 @@ SMTP Host : smtp.gmail.com
 SMTP Port :587
 SMTP User :tomandjerry2092023@gmail.com
 SMTP Password :bqdu dajd ndrf efdm
-Sender Email : "AgriLink Support" <tomandjerry2092023@gmail.com>
+Sender Email : "AgriLink Support"
