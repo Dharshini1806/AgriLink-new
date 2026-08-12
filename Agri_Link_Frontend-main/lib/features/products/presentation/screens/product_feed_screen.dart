@@ -253,7 +253,7 @@ class _ProductFeedScreenState extends ConsumerState<ProductFeedScreen>
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(20),
                       child: SizedBox(
-                        height: 130,
+                        height: 140,
                         child: PageView.builder(
                           controller: _pageCtrl,
                           onPageChanged: (i) => setState(() => _bannerPage = i),
@@ -268,7 +268,7 @@ class _ProductFeedScreenState extends ConsumerState<ProductFeedScreen>
                                   end: Alignment.centerRight,
                                 ),
                               ),
-                              padding: const EdgeInsets.all(20),
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                               child: Row(children: [
                                 Expanded(
                                   child: Column(

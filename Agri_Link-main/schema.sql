@@ -189,6 +189,17 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_hash ON refresh_tokens(token_hash);
 
+-- ─── PASSWORD RESETS (OTP) ────────────────────────────────
+CREATE TABLE IF NOT EXISTS password_resets (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email      VARCHAR(150) NOT NULL,
+  otp        VARCHAR(6)   NOT NULL,
+  expires_at TIMESTAMPTZ  NOT NULL,
+  created_at TIMESTAMPTZ  DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_resets_email ON password_resets(email);
+
 -- ─── SEED: CATEGORIES ─────────────────────────────────────
 INSERT INTO categories (name, icon_url) VALUES
   ('Vegetables',   'https://cdn-icons-png.flaticon.com/512/1625/1625048.png'),
