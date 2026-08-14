@@ -30,6 +30,9 @@ class ProductModel extends ProductEntity {
     super.avgRating,
     super.reviewCount,
     super.distanceKm,
+    super.sellPct,
+    super.sellerScore,
+    super.qtySold,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -62,6 +65,9 @@ class ProductModel extends ProductEntity {
       avgRating: _toDouble(json['avg_rating']) ?? 0.0,
       reviewCount: json['review_count'] as int? ?? 0,
       distanceKm: _toDouble(json['distance_km']),
+      sellPct: _toDouble(json['sell_pct']),
+      sellerScore: _toDouble(json['seller_score']),
+      qtySold: json['qty_sold'] as int?,
     );
   }
 
@@ -94,6 +100,9 @@ class ProductModel extends ProductEntity {
         'avg_rating': avgRating,
         'review_count': reviewCount,
         'distance_km': distanceKm,
+        'sell_pct': sellPct,
+        'seller_score': sellerScore,
+        'qty_sold': qtySold,
       };
 }
 

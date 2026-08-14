@@ -1,26 +1,39 @@
 const { Pool } = require('pg');
-const parse = require('pg-connection-string').parse;
 const logger = require('../utils/logger');
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  logger.error('CRITICAL: DATABASE_URL environment variable is missing. Please set DATABASE_URL in your Render dashboard environment variables.');
+const rawUrl = process.env.DATABASE_URL;
+if (!rawUrl) {
+  logger.error('CRITICAL: DATABASE_URL environment variable is missing.');
   throw new Error('DATABASE_URL environment variable is not defined.');
 }
 
-const dbConfig = parse(connectionString);
-
-if (
-  connectionString.includes('sslmode=require') ||
-  connectionString.includes('ssl=true') ||
-  connectionString.includes('render.com') ||
-  connectionString.includes('supabase.co') ||
-  process.env.NODE_ENV === 'production'
-) {
-  dbConfig.ssl = { rejectUnauthorized: false };
-} else {
-  delete dbConfig.ssl;
+// Parse the DATABASE_URL manually using Node's built-in URL API.
+// This COMPLETELY bypasses pg-connection-string, which in v2.12+ treats
+// sslmode=require as sslmode=verify-full — causing "Connection terminated
+// unexpectedly" when connecting to Render/Supabase PostgreSQL.
+function parseDbUrl(rawUrl) {
+  const u = new URL(rawUrl);
+  return {
+    host:     u.hostname,
+    port:     parseInt(u.port) || 5432,
+    database: u.pathname.replace(/^\//, ''),
+    user:     decodeURIComponent(u.username),
+    password: decodeURIComponent(u.password),
+  };
 }
+
+const isRemote =
+  rawUrl.includes('render.com')     ||
+  rawUrl.includes('supabase.co')    ||
+  rawUrl.includes('neon.tech')      ||
+  rawUrl.includes('sslmode=require') ||
+  rawUrl.includes('ssl=true')       ||
+  process.env.NODE_ENV === 'production';
+
+const dbConfig = {
+  ...parseDbUrl(rawUrl),
+  ssl: isRemote ? { rejectUnauthorized: false } : false,
+};
 
 dbConfig.max = 10;
 dbConfig.idleTimeoutMillis = 30000;

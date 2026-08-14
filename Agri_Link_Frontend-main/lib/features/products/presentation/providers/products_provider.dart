@@ -216,3 +216,23 @@ final sellerProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
   final ds = ref.watch(productsRemoteDataSourceProvider);
   return ds.getSellerProducts();
 });
+
+// ── Top Sellers ───────────────────────────────────────────
+final topSellersProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final ds = ref.watch(productsRemoteDataSourceProvider);
+  return ds.getTopSellers(limit: 5);
+});
+
+/// Derived set of seller IDs that are top sellers — used by ProductCard for badge.
+final topSellerIdsProvider = Provider<Set<String>>((ref) {
+  final sellers = ref.watch(topSellersProvider).valueOrNull ?? [];
+  return sellers.map((s) => s['id'] as String).toSet();
+});
+
+/// Full farmer details with all products + sell_pct — used by TopSellersScreen.
+final topSellerDetailsProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final ds = ref.watch(productsRemoteDataSourceProvider);
+  return ds.getTopSellerDetails(limit: 20);
+});

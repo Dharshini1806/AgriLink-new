@@ -63,21 +63,30 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<String> forgotPassword(String email) async {
-    final res = await _dio.post(ApiEndpoints.forgotPassword, data: {'email': email});
+    final res = await _dio.post(ApiEndpoints.forgotPassword, data: {'email': email.trim().toLowerCase()});
     return (res.data['message'] as String?) ?? 'OTP sent successfully';
   }
 
   @override
   Future<bool> verifyOtp(String email, String otp) async {
-    final res = await _dio.post(ApiEndpoints.verifyOtp, data: {'email': email, 'otp': otp});
-    return (res.data['valid'] as bool?) ?? false;
+    try {
+      final res = await _dio.post(
+        ApiEndpoints.verifyOtp,
+        data: {'email': email.trim().toLowerCase(), 'otp': otp.trim()},
+      );
+      return (res.data['valid'] as bool?) ?? false;
+    } on DioException catch (e) {
+      // If server explicitly says unauthorized (expired/invalid OTP), return false
+      if (e.response?.statusCode == 401) return false;
+      rethrow;
+    }
   }
 
   @override
   Future<String> resetPassword(String email, String otp, String newPassword) async {
     final res = await _dio.post(ApiEndpoints.resetPassword, data: {
-      'email': email,
-      'otp': otp,
+      'email': email.trim().toLowerCase(),
+      'otp': otp.trim(),
       'password': newPassword,
     });
     return (res.data['message'] as String?) ?? 'Password reset successfully';

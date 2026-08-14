@@ -17,6 +17,8 @@ class ProductCard extends ConsumerWidget {
   final VoidCallback? onCompareToggle;
   final VoidCallback? onWishlistToggle;
   final bool? isWishlisted;
+  final bool isTopSeller;
+  final bool showSellPct;
 
   const ProductCard({
     super.key,
@@ -28,6 +30,8 @@ class ProductCard extends ConsumerWidget {
     this.onCompareToggle,
     this.onWishlistToggle,
     this.isWishlisted,
+    this.isTopSeller = false,
+    this.showSellPct = true,
   });
 
   Color get _gradeColor {
@@ -167,6 +171,35 @@ class ProductCard extends ConsumerWidget {
                   ],
                 ]),
               ),
+              // 🔥 Hot Seller badge
+              if (isTopSeller)
+                Positioned(
+                  bottom: 6, left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFF6B00), Color(0xFFFFB800)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(color: Color(0x66FF6B00), blurRadius: 6, offset: Offset(0, 2)),
+                      ],
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Text('🔥', style: TextStyle(fontSize: 8)),
+                      const SizedBox(width: 3),
+                      Text(
+                        'Hot Seller',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white, fontSize: 8, fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
             ]),
           ),
           // ── Info ─────────────────────────────────────────────────────────
@@ -235,6 +268,8 @@ class ProductCard extends ConsumerWidget {
                   ),
                 ]),
               ],
+              // ── Selling percentage badge ──────────────────────────────
+              if (showSellPct) _SellPctBar(product: product),
             ]),
           ),
         ]),
@@ -279,3 +314,73 @@ class _GlassActionBtn extends StatelessWidget {
         ),
       );
 }
+
+// ── Selling percentage progress bar ──────────────────────────────────────────
+/// Shows what percentage of a seller's total sales this product accounts for.
+/// Hidden automatically when sell_pct == 0 (new products / no order history).
+class _SellPctBar extends StatelessWidget {
+  final dynamic product;
+  const _SellPctBar({required this.product});
+
+  double get _pct {
+    final raw = product['sell_pct'];
+    if (raw == null) return 0.0;
+    if (raw is num) return raw.toDouble().clamp(0.0, 100.0);
+    return double.tryParse(raw.toString())?.clamp(0.0, 100.0) ?? 0.0;
+  }
+
+  Color _barColor(double pct) {
+    if (pct >= 50) return const Color(0xFF2E7D32);
+    if (pct >= 25) return const Color(0xFF558B2F);
+    return const Color(0xFF7B9E3C);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = _pct;
+    if (pct <= 0) return const SizedBox.shrink();
+
+    final color = _barColor(pct);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 6, 0, 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Text('📈', style: TextStyle(fontSize: 9)),
+            const SizedBox(width: 3),
+            Expanded(
+              child: Text(
+                '${pct.toStringAsFixed(1)}% of seller\'s sales',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 3),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: pct / 100),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOut,
+              builder: (_, value, __) => LinearProgressIndicator(
+                value: value,
+                minHeight: 4,
+                backgroundColor: AppColors.border.withOpacity(0.4),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

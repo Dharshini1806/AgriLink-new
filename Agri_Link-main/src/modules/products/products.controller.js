@@ -67,4 +67,20 @@ async function getWishlist(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getFeed, getOne, getMyProducts, create, update, remove, getCategories, toggleWishlist, getWishlist };
+async function getTopSellers(req, res, next) {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 5, 10);
+    const sellers = await productService.getTopSellers(limit);
+    res.json({ data: sellers });
+  } catch (err) { next(err); }
+}
+
+async function getTopSellerDetails(req, res, next) {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const sellers = await productService.getTopSellerDetails(limit);
+    res.json({ data: sellers });
+  } catch (err) { next(err); }
+}
+
+module.exports = { getFeed, getOne, getMyProducts, create, update, remove, getCategories, toggleWishlist, getWishlist, getTopSellers, getTopSellerDetails };

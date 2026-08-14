@@ -32,6 +32,11 @@ class ProductEntity extends Equatable {
   final int reviewCount;
   final double? distanceKm;
 
+  // Recommendation / sell-performance fields
+  final double? sellPct;      // % of seller's total sales this product accounts for
+  final double? sellerScore;  // composite seller performance score (for feed ordering)
+  final int? qtySold;         // total units of this product delivered
+
   const ProductEntity({
     required this.id,
     required this.sellerId,
@@ -61,6 +66,9 @@ class ProductEntity extends Equatable {
     this.avgRating = 0.0,
     this.reviewCount = 0,
     this.distanceKm,
+    this.sellPct,
+    this.sellerScore,
+    this.qtySold,
   });
 
   dynamic operator [](String key) {
@@ -121,6 +129,12 @@ class ProductEntity extends Equatable {
         return reviewCount;
       case 'distance_km':
         return distanceKm;
+      case 'sell_pct':
+        return sellPct;
+      case 'seller_score':
+        return sellerScore;
+      case 'qty_sold':
+        return qtySold;
       default:
         return null;
     }
@@ -138,5 +152,8 @@ class ProductEntity extends Equatable {
         isActive,
         isApproved,
         createdAt,
+        sellPct,
+        sellerScore,
+        qtySold,
       ];
 }

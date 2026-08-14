@@ -7,11 +7,20 @@ const validate = require('../../middleware/validate');
 
 const router = express.Router();
 
-// Strict rate limit for auth endpoints
+// Strict rate limit for auth endpoints (login/register)
 const authLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX) || 10,
   message: { error: 'Too many auth attempts. Try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// More permissive rate limit for OTP / password reset flow
+const otpLimiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: parseInt(process.env.OTP_RATE_LIMIT_MAX) || 20,
+  message: { error: 'Too many password reset attempts. Try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -66,8 +75,8 @@ router.post('/refresh',  validate(refreshSchema), controller.refresh);
 router.post('/logout',   verifyToken, controller.logout);
 router.get('/me',        verifyToken, controller.getMe);
 router.patch('/fcm-token', verifyToken, validate(fcmSchema), controller.updateFcmToken);
-router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), controller.forgotPassword);
-router.post('/verify-otp',      authLimiter, validate(verifyOtpSchema),      controller.verifyOtp);
-router.post('/reset-password',  authLimiter, validate(resetPasswordSchema),  controller.resetPassword);
+router.post('/forgot-password', otpLimiter, validate(forgotPasswordSchema), controller.forgotPassword);
+router.post('/verify-otp',      otpLimiter, validate(verifyOtpSchema),      controller.verifyOtp);
+router.post('/reset-password',  otpLimiter, validate(resetPasswordSchema),  controller.resetPassword);
 
 module.exports = router;

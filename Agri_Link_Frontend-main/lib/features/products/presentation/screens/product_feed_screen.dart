@@ -7,6 +7,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/product_card.dart';
 import '../providers/products_provider.dart';
 import '../providers/location_provider.dart';
+import '../widgets/top_sellers_section.dart';
 
 // ── Hero banner data ─────────────────────────────────────────────────────────
 const _heroBanners = [
@@ -140,6 +141,7 @@ class _ProductFeedScreenState extends ConsumerState<ProductFeedScreen>
     final compareIds    = ref.watch(compareSelectionProvider);
     final wishlistState = ref.watch(wishlistProvider);
     final locationState = ref.watch(userLocationProvider);
+    final topSellerIds  = ref.watch(topSellerIdsProvider);
 
     ref.listen(userLocationProvider, (prev, next) {
       if (prev?.latitude != next.latitude || prev?.longitude != next.longitude) {
@@ -152,7 +154,7 @@ class _ProductFeedScreenState extends ConsumerState<ProductFeedScreen>
     final totalSpacing   = (crossAxisCount - 1) * 12.0;
     final cardWidth      = (screenWidth - 32.0 - totalSpacing) / crossAxisCount;
     final imageHeight    = cardWidth * 3 / 4;
-    const infoHeight     = 120.0;
+    const infoHeight     = 152.0;
     final childAspectRatio = cardWidth / (imageHeight + infoHeight);
 
     return Scaffold(
@@ -333,6 +335,9 @@ class _ProductFeedScreenState extends ConsumerState<ProductFeedScreen>
                   ),
                 ),
 
+                // ── Top Sellers section ───────────────────────────────────
+                const SliverToBoxAdapter(child: TopSellersSection()),
+
                 // ── Location Bar ─────────────────────────────────────────
                 SliverToBoxAdapter(
                   child: Padding(
@@ -489,15 +494,38 @@ class _ProductFeedScreenState extends ConsumerState<ProductFeedScreen>
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: Row(children: [
-                      Text('Nearby Produce',
-                        style: GoogleFonts.playfairDisplay(
-                          fontSize: 18, fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        )),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('🌟 Recommended For You',
+                            style: GoogleFonts.playfairDisplay(
+                              fontSize: 18, fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            )),
+                          Text('Ranked by seller performance',
+                            style: GoogleFonts.poppins(
+                                fontSize: 10, color: AppColors.textHint,
+                                fontWeight: FontWeight.w500)),
+                        ],
+                      ),
                       const Spacer(),
-                      Text('Fresh picks',
-                        style: GoogleFonts.poppins(
-                            fontSize: 11, color: AppColors.textHint, fontWeight: FontWeight.w500)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondary.withOpacity(0.10),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.secondary.withOpacity(0.25)),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.auto_awesome_rounded,
+                              color: AppColors.secondary, size: 11),
+                          const SizedBox(width: 3),
+                          Text('Smart sort',
+                            style: GoogleFonts.poppins(
+                                fontSize: 10, color: AppColors.secondary,
+                                fontWeight: FontWeight.w700)),
+                        ]),
+                      ),
                     ]),
                   ),
                 ),
@@ -578,6 +606,7 @@ class _ProductFeedScreenState extends ConsumerState<ProductFeedScreen>
                           (ctx, i) {
                             if (i >= products.length) return const _LoadingMore();
                             final p = products[i];
+                            final sellerId = p['seller_id'] as String? ?? '';
                             return ProductCard(
                               product: p,
                               showCompareToggle: true,
@@ -588,6 +617,7 @@ class _ProductFeedScreenState extends ConsumerState<ProductFeedScreen>
                               isWishlisted: wishlistState.ids.contains(p['id'] as String),
                               onWishlistToggle: () =>
                                   ref.read(wishlistProvider.notifier).toggle(p),
+                              isTopSeller: topSellerIds.contains(sellerId),
                             );
                           },
                           childCount: products.length + 1,

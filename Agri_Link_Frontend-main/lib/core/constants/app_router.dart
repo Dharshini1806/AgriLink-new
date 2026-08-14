@@ -12,6 +12,7 @@ import '../../features/products/presentation/screens/product_detail_screen.dart'
 import '../../features/products/presentation/screens/product_search_screen.dart';
 import '../../features/products/presentation/screens/product_compare_screen.dart';
 import '../../features/products/presentation/screens/wishlist_screen.dart';
+import '../../features/products/presentation/screens/top_sellers_screen.dart';
 import '../../features/orders/presentation/screens/cart_screen.dart';
 import '../../features/orders/presentation/screens/checkout_screen.dart';
 import '../../features/orders/presentation/screens/orders_list_screen.dart';
@@ -63,12 +64,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child, role: 'buyer'),
         routes: [
-          GoRoute(path: '/home',    builder: (c, s) => const ProductFeedScreen()),
-          GoRoute(path: '/search',  builder: (c, s) => const ProductSearchScreen()),
-          GoRoute(path: '/orders',  builder: (c, s) => const OrdersListScreen()),
-          GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
-          GoRoute(path: '/recipe',  builder: (c, s) => const RecipePickerScreen()),
-          GoRoute(path: '/wishlist', builder: (c, s) => const WishlistScreen()),
+          GoRoute(path: '/home',         builder: (c, s) => const ProductFeedScreen()),
+          GoRoute(path: '/search',        builder: (c, s) => const ProductSearchScreen()),
+          GoRoute(path: '/orders',        builder: (c, s) => const OrdersListScreen()),
+          GoRoute(path: '/profile',       builder: (c, s) => const ProfileScreen()),
+          GoRoute(path: '/recipe',        builder: (c, s) => const RecipePickerScreen()),
+          GoRoute(path: '/wishlist',      builder: (c, s) => const WishlistScreen()),
+          GoRoute(path: '/top-sellers',   builder: (c, s) => const TopSellersScreen()),
         ],
       ),
       GoRoute(

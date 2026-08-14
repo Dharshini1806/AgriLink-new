@@ -13,6 +13,8 @@ abstract class ProductsRemoteDataSource {
   Future<ProductModel> createProduct(Map<String, dynamic> body);
   Future<ProductModel> updateProduct(String id, Map<String, dynamic> body);
   Future<void> deleteProduct(String id);
+  Future<List<Map<String, dynamic>>> getTopSellers({int limit = 5});
+  Future<List<Map<String, dynamic>>> getTopSellerDetails({int limit = 20});
 }
 
 class ProductsRemoteDataSourceImpl implements ProductsRemoteDataSource {
@@ -75,5 +77,25 @@ class ProductsRemoteDataSourceImpl implements ProductsRemoteDataSource {
   @override
   Future<void> deleteProduct(String id) async {
     await _dio.delete(ApiEndpoints.productById(id));
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getTopSellers({int limit = 5}) async {
+    final res = await _dio.get(
+      ApiEndpoints.topSellers,
+      queryParameters: {'limit': limit},
+    );
+    final rawList = (res.data['data'] as List?) ?? [];
+    return rawList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getTopSellerDetails({int limit = 20}) async {
+    final res = await _dio.get(
+      ApiEndpoints.topSellerDetails,
+      queryParameters: {'limit': limit},
+    );
+    final rawList = (res.data['data'] as List?) ?? [];
+    return rawList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 }

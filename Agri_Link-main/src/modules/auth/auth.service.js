@@ -115,21 +115,14 @@ async function updateFcmToken(userId, fcmToken) {
 }
 
 async function forgotPassword(email) {
-  const res = await db.query('SELECT id FROM users WHERE email=$1', [email]);
+  const normalizedEmail = email.toLowerCase().trim();
+  const res = await db.query('SELECT id FROM users WHERE email=$1', [normalizedEmail]);
   if (!res.rows.length) {
     throw new NotFoundError('Email is not registered');
   }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-  // Clear previous OTPs
-  await db.query('DELETE FROM password_resets WHERE email=$1', [email]);
-
-  await db.query(
-    'INSERT INTO password_resets (email, otp, expires_at) VALUES ($1, $2, $3)',
-    [email, otp, expiresAt]
-  );
 
   const text = `Your AgriLink password reset OTP is ${otp}. This code is valid for 10 minutes.`;
   const html = `
@@ -146,26 +139,41 @@ async function forgotPassword(email) {
     </div>
   `;
 
-  await sendEmail({
-    to: email,
+  // Send email BEFORE storing OTP — fail fast if email cannot be delivered
+  const emailResult = await sendEmail({
+    to: normalizedEmail,
     subject: 'AgriLink Password Reset OTP',
     text,
     html,
   });
 
-  return 'OTP sent successfully';
+  if (emailResult.status === 'FAILED') {
+    throw new Error(`Failed to send OTP email: ${emailResult.error || 'Unknown email error'}`);
+  }
+
+  // Clear previous OTPs and store the new one only after email is confirmed sent
+  await db.query('DELETE FROM password_resets WHERE email=$1', [normalizedEmail]);
+  await db.query(
+    'INSERT INTO password_resets (email, otp, expires_at) VALUES ($1, $2, $3)',
+    [normalizedEmail, otp, expiresAt]
+  );
+
+  return 'OTP sent successfully. Please check your email.';
 }
 
 async function verifyOtp(email, otp) {
+  const normalizedEmail = email.toLowerCase().trim();
+  const normalizedOtp = String(otp).trim();
   const res = await db.query(
     'SELECT id FROM password_resets WHERE email=$1 AND otp=$2 AND expires_at > NOW()',
-    [email, otp]
+    [normalizedEmail, normalizedOtp]
   );
   return res.rows.length > 0;
 }
 
 async function resetPassword(email, otp, newPassword) {
-  const isValid = await verifyOtp(email, otp);
+  const normalizedEmail = email.toLowerCase().trim();
+  const isValid = await verifyOtp(normalizedEmail, otp);
   if (!isValid) {
     throw new UnauthorizedError('Invalid or expired OTP code');
   }
@@ -173,13 +181,13 @@ async function resetPassword(email, otp, newPassword) {
   const password_hash = await bcrypt.hash(newPassword, 12);
   const res = await db.query(
     'UPDATE users SET password_hash=$1 WHERE email=$2 RETURNING id',
-    [password_hash, email]
+    [password_hash, normalizedEmail]
   );
   if (!res.rows.length) {
     throw new NotFoundError('User not found');
   }
 
-  await db.query('DELETE FROM password_resets WHERE email=$1', [email]);
+  await db.query('DELETE FROM password_resets WHERE email=$1', [normalizedEmail]);
   return 'Password reset successfully';
 }
 

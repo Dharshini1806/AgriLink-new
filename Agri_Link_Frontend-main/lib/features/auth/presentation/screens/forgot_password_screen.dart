@@ -76,7 +76,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     try {
       final remoteDs = ref.read(authRemoteDataSourceProvider);
-      final msg = await remoteDs.forgotPassword(_emailC.text.trim());
+      final msg = await remoteDs.forgotPassword(_emailC.text.trim().toLowerCase());
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -88,7 +88,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = e.toString().replaceAll('Exception: ', '').replaceAll('AppException(400): ', '');
+        _errorMessage = _cleanError(e.toString());
       });
     }
   }
@@ -103,7 +103,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     try {
       final remoteDs = ref.read(authRemoteDataSourceProvider);
-      final isValid = await remoteDs.verifyOtp(_emailC.text.trim(), _otpC.text.trim());
+      final isValid = await remoteDs.verifyOtp(
+        _emailC.text.trim().toLowerCase(),
+        _otpC.text.trim(),
+      );
       if (!mounted) return;
       if (isValid) {
         setState(() {
@@ -113,14 +116,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       } else {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Invalid OTP code. Please try again.';
+          _errorMessage = 'Invalid or expired OTP code. Please check and try again.';
         });
       }
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = e.toString().replaceAll('Exception: ', '').replaceAll('AppException(401): ', '');
+        _errorMessage = _cleanError(e.toString());
       });
     }
   }
@@ -141,7 +144,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     try {
       final remoteDs = ref.read(authRemoteDataSourceProvider);
       final msg = await remoteDs.resetPassword(
-        _emailC.text.trim(),
+        _emailC.text.trim().toLowerCase(),
         _otpC.text.trim(),
         _passC.text,
       );
@@ -159,9 +162,17 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = e.toString().replaceAll('Exception: ', '').replaceAll('AppException(400): ', '');
+        _errorMessage = _cleanError(e.toString());
       });
     }
+  }
+
+  /// Strips all known exception prefixes and returns a clean user-facing message.
+  String _cleanError(String raw) {
+    return raw
+        .replaceAll(RegExp(r'AppException\(\d+\):\s*'), '')
+        .replaceAll('Exception: ', '')
+        .trim();
   }
 
   @override

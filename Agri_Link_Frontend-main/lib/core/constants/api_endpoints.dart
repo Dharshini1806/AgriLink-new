@@ -78,6 +78,8 @@ class ApiEndpoints {
   static const String categories   = '/api/products/categories';
   static const String wishlist     = '/api/products/wishlist';
   static const String myProducts   = '/api/products/mine';
+  static const String topSellers       = '/api/products/top-sellers';
+  static const String topSellerDetails = '/api/products/top-sellers/details';
   static String productById(String id) => '/api/products/$id';
   static String toggleWishlist(String id) => '/api/products/$id/wishlist';
   static String productReviews(String id) => '/api/reviews/product/$id';
