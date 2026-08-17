@@ -250,22 +250,33 @@ class ProductCard extends ConsumerWidget {
                     ),
                   ),
               ]),
-              if (rating > 0 || reviews > 0) ...[
+              if (rating > 0 || reviews > 0 || (product['qty_sold'] != null && (product['qty_sold'] as int? ?? 0) > 0)) ...[
                 const SizedBox(height: 4),
                 Row(children: [
-                  RatingBarIndicator(
-                    rating: rating,
-                    itemBuilder: (_, __) =>
-                        const Icon(Icons.star_rounded, color: AppColors.secondary),
-                    itemCount: 5,
-                    itemSize: 11,
-                    unratedColor: AppColors.border,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '($reviews)',
-                    style: GoogleFonts.poppins(fontSize: 10, color: AppColors.textHint),
-                  ),
+                  if (rating > 0) ...[
+                    RatingBarIndicator(
+                      rating: rating,
+                      itemBuilder: (_, __) =>
+                          const Icon(Icons.star_rounded, color: AppColors.secondary),
+                      itemCount: 5,
+                      itemSize: 11,
+                      unratedColor: AppColors.border,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '($reviews)',
+                      style: GoogleFonts.poppins(fontSize: 10, color: AppColors.textHint),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  if (product['qty_sold'] != null && (product['qty_sold'] as int? ?? 0) > 0) ...[
+                    const Icon(Icons.local_shipping_outlined, size: 11, color: AppColors.textHint),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${product['qty_sold']} sold',
+                      style: GoogleFonts.poppins(fontSize: 10, color: AppColors.textHint, fontWeight: FontWeight.w500),
+                    ),
+                  ],
                 ]),
               ],
               // ── Selling percentage badge ──────────────────────────────

@@ -206,8 +206,112 @@ async function getFraudSignals() {
   };
 }
 
+async function listReviews({ page = 1, limit = 20 }) {
+  const offset = (page - 1) * limit;
+  const res = await db.query(
+    `SELECT r.*, u.name AS reviewer_name, p.name AS product_name, p.image_urls AS product_images
+     FROM reviews r
+     JOIN users u ON u.id = r.reviewer_id
+     LEFT JOIN products p ON p.id = r.product_id
+     ORDER BY r.created_at DESC
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  );
+  const count = await db.query('SELECT COUNT(*)::INT AS total FROM reviews');
+  return { data: res.rows, total: count.rows[0].total };
+}
+
+async function deleteReview(reviewId) {
+  const res = await db.query('SELECT id, reviewee_id FROM reviews WHERE id = $1', [reviewId]);
+  if (!res.rows[0]) throw new NotFoundError('Review not found');
+  const { reviewee_id } = res.rows[0];
+
+  await db.query('DELETE FROM reviews WHERE id = $1', [reviewId]);
+
+  if (reviewee_id) {
+    const { updateTrustScore } = require('../smart/trust.service');
+    await updateTrustScore(reviewee_id);
+  }
+}
+
+async function getReviewStats() {
+  const totalStats = await db.query(
+    `SELECT 
+       COUNT(*)::INT AS count,
+       COALESCE(AVG(rating), 0)::DECIMAL(3,2) AS avg_rating,
+       COUNT(*) FILTER (WHERE sentiment_label = 'positive')::INT AS positive_count,
+       COUNT(*) FILTER (WHERE sentiment_label = 'neutral')::INT AS neutral_count,
+       COUNT(*) FILTER (WHERE sentiment_label = 'negative')::INT AS negative_count
+     FROM reviews`
+  );
+
+  const highlyNegative = await db.query(
+    `SELECT 
+       p.id, p.name, p.price, p.image_urls,
+       COALESCE(AVG(r.rating), 0)::DECIMAL(3,2) AS avg_rating,
+       COUNT(r.id)::INT AS review_count,
+       ROUND(100.0 * COUNT(r.id) FILTER (WHERE r.sentiment_label = 'negative') / COUNT(r.id), 1) AS negative_pct
+     FROM products p
+     JOIN reviews r ON r.product_id = p.id
+     GROUP BY p.id
+     HAVING COUNT(r.id) >= 2 AND (AVG(r.rating) <= 2.5 OR (100.0 * COUNT(r.id) FILTER (WHERE r.sentiment_label = 'negative') / COUNT(r.id)) >= 40)
+     ORDER BY avg_rating ASC, negative_pct DESC`
+  );
+
+  const consistentlyPositive = await db.query(
+    `SELECT 
+       p.id, p.name, p.price, p.image_urls,
+       COALESCE(AVG(r.rating), 0)::DECIMAL(3,2) AS avg_rating,
+       COUNT(r.id)::INT AS review_count,
+       ROUND(100.0 * COUNT(r.id) FILTER (WHERE r.sentiment_label = 'positive') / COUNT(r.id), 1) AS positive_pct
+     FROM products p
+     JOIN reviews r ON r.product_id = p.id
+     GROUP BY p.id
+     HAVING COUNT(r.id) >= 3 AND AVG(r.rating) >= 4.5
+     ORDER BY avg_rating DESC, positive_pct DESC`
+  );
+
+  const recommendationScores = await db.query(
+    `SELECT p.id, p.name, COALESCE(AVG(r.rating), 0)::DECIMAL(3,2) AS avg_rating, COUNT(r.id)::INT AS review_count
+     FROM products p
+     LEFT JOIN reviews r ON r.product_id = p.id
+     WHERE p.is_active = TRUE AND p.is_approved = TRUE
+     GROUP BY p.id
+     LIMIT 10`
+  );
+  
+  const { getProductRecommendationBreakdown } = require('../products/recommendation.service');
+  const productsWithScores = [];
+  for (const prod of recommendationScores.rows) {
+    const scoreData = await getProductRecommendationBreakdown(prod.id);
+    if (scoreData) {
+      productsWithScores.push(scoreData);
+    }
+  }
+  productsWithScores.sort((a, b) => b.recommendation_score - a.recommendation_score);
+
+  const stats = totalStats.rows[0];
+  const total = stats.count || 1;
+
+  return {
+    summary: {
+      totalReviews: stats.count,
+      averageRating: parseFloat(stats.avg_rating),
+      sentimentSplit: {
+        positive: Math.round((stats.positive_count / total) * 100),
+        neutral: Math.round((stats.neutral_count / total) * 100),
+        negative: Math.round((stats.negative_count / total) * 100),
+      }
+    },
+    highlyNegativeProducts: highlyNegative.rows,
+    consistentlyPositiveProducts: consistentlyPositive.rows,
+    topRankedProducts: productsWithScores.slice(0, 5)
+  };
+}
+
 module.exports = {
   listUsers, setUserBanStatus,
   listPendingProducts, moderateProduct,
   getRevenueAnalytics, getDashboardStats, getFraudSignals,
+  listReviews, deleteReview, getReviewStats
 };

@@ -13,6 +13,7 @@ import '../../features/products/presentation/screens/product_search_screen.dart'
 import '../../features/products/presentation/screens/product_compare_screen.dart';
 import '../../features/products/presentation/screens/wishlist_screen.dart';
 import '../../features/products/presentation/screens/top_sellers_screen.dart';
+import '../../features/products/presentation/screens/farmer_profile_screen.dart';
 import '../../features/orders/presentation/screens/cart_screen.dart';
 import '../../features/orders/presentation/screens/checkout_screen.dart';
 import '../../features/orders/presentation/screens/orders_list_screen.dart';
@@ -76,6 +77,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/product/:id',
         builder: (c, s) => ProductDetailScreen(productId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/farmer/:id',
+        builder: (c, s) => FarmerProfileScreen(farmerId: s.pathParameters['id']!),
       ),
       GoRoute(
         path: '/compare',

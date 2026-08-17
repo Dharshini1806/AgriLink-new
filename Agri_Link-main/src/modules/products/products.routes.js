@@ -24,6 +24,7 @@ const updateSchema = productSchema.fork(
 ).append({ is_active: Joi.boolean().optional() });
 
 // Public-ish (needs auth)
+router.get('/recommended',          verifyToken, controller.getRecommended);
 router.get('/',                    verifyToken, controller.getFeed);
 router.get('/categories',          verifyToken, controller.getCategories);
 router.get('/top-sellers/details', verifyToken, controller.getTopSellerDetails);
@@ -31,6 +32,8 @@ router.get('/top-sellers',         verifyToken, controller.getTopSellers);
 router.get('/wishlist',            verifyToken, requireRole('buyer'), controller.getWishlist);
 router.get('/mine',                verifyToken, requireRole('seller'), controller.getMyProducts);
 router.get('/:id',                 verifyToken, controller.getOne);
+router.get('/:id/recommendation-score', verifyToken, controller.getRecommendationScore);
+router.get('/:id/review-summary',       verifyToken, controller.getReviewSummary);
 
 // Seller only
 router.post('/',

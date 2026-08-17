@@ -33,6 +33,7 @@ class ProductModel extends ProductEntity {
     super.sellPct,
     super.sellerScore,
     super.qtySold,
+    super.likesCount,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -68,6 +69,7 @@ class ProductModel extends ProductEntity {
       sellPct: _toDouble(json['sell_pct']),
       sellerScore: _toDouble(json['seller_score']),
       qtySold: json['qty_sold'] as int?,
+      likesCount: json['likes_count'] as int?,
     );
   }
 
@@ -103,6 +105,7 @@ class ProductModel extends ProductEntity {
         'sell_pct': sellPct,
         'seller_score': sellerScore,
         'qty_sold': qtySold,
+        'likes_count': likesCount,
       };
 }
 

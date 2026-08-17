@@ -5,6 +5,7 @@ import '../models/category_model.dart';
 
 abstract class ProductsRemoteDataSource {
   Future<List<ProductModel>> getFeed(Map<String, dynamic> params);
+  Future<List<ProductModel>> getRecommendedProducts(Map<String, dynamic> params);
   Future<ProductModel> getProductById(String id);
   Future<List<ProductModel>> getSellerProducts();
   Future<List<CategoryModel>> getCategories();
@@ -26,6 +27,13 @@ class ProductsRemoteDataSourceImpl implements ProductsRemoteDataSource {
   Future<List<ProductModel>> getFeed(Map<String, dynamic> params) async {
     final res = await _dio.get(ApiEndpoints.products, queryParameters: params);
     final rawList = (res.data['data'] as List?) ?? (res.data is List ? res.data as List : []);
+    return rawList.map((item) => ProductModel.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  @override
+  Future<List<ProductModel>> getRecommendedProducts(Map<String, dynamic> params) async {
+    final res = await _dio.get(ApiEndpoints.recommended, queryParameters: params);
+    final rawList = (res.data['products'] as List?) ?? [];
     return rawList.map((item) => ProductModel.fromJson(item as Map<String, dynamic>)).toList();
   }
 

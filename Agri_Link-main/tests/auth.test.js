@@ -38,7 +38,7 @@ describe('Auth Password Reset Integration Tests', () => {
       .send({ email: testEmail });
       
     expect(forgotRes.status).toBe(200);
-    expect(forgotRes.body.message).toBe('OTP sent successfully');
+    expect(forgotRes.body.message).toBe('OTP sent successfully. Please check your email.');
 
     // 2. Query the DB to retrieve the generated OTP
     const dbRes = await db.query(

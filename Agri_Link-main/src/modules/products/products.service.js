@@ -6,7 +6,7 @@ const { NotFoundError, ForbiddenError, BadRequestError } = require('../../middle
  * Geo-filtered product feed for buyers
  * Filters products where the buyer's location is within the seller's delivery_radius_km
  */
-async function getProductFeed({ lat, lng, radius = 50, category, q, grade, minPrice, maxPrice, page = 1, limit = 20 }) {
+async function getProductFeed({ lat, lng, radius = 50, category, q, grade, minPrice, maxPrice, seller_id, page = 1, limit = 20 }) {
   const offset = (page - 1) * limit;
   const params = [];
   const conditions = ['p.is_active = TRUE', 'p.is_approved = TRUE', 'p.quantity > 0'];
@@ -52,6 +52,11 @@ async function getProductFeed({ lat, lng, radius = 50, category, q, grade, minPr
     conditions.push(`p.price <= $${params.length}`);
   }
 
+  if (seller_id) {
+    params.push(seller_id);
+    conditions.push(`p.seller_id = $${params.length}`);
+  }
+
   const whereClause = conditions.join(' AND ');
 
   // Distance expression (reused for ORDER BY)
@@ -66,29 +71,43 @@ async function getProductFeed({ lat, lng, radius = 50, category, q, grade, minPr
   params.push(limit, offset);
 
   // ── Recommendation system ─────────────────────────────────────────────────
-  // CTEs compute:
-  //   qty_sold        – units of this product delivered to buyers
-  //   seller_total_qty – total units the seller has ever delivered
-  //   sell_pct        – share of this product in seller's total sales (%)
-  //   seller_score    – composite score: sales_volume (×0.5) + avg_rating (×10) + trust (×2)
+  // We compute a composite review-based recommendation score:
+  //   Rating Score (40%): Bayesian rating normalized to 0-100
+  //   Sentiment Score (30%): ratio of positive to negative reviews
+  //   Recency Score (15%): exponential decay of review recency
+  //   Consistency Score (15%): rating variance penalty
+  //   Volume Confidence: confidence multiplier based on review counts
   //
-  // Products are ordered by seller_score DESC so buyers see the most active,
-  // highly-rated sellers first — a simple collaborative-filter-style ranking.
+  // Products are ordered by recommendation_score DESC.
+  // Note: dq.qty_sold is fetched for informational/display purposes only!
   const sql = `
-    WITH delivered_qty AS (
+    WITH review_stats AS (
+      SELECT
+        product_id,
+        COUNT(id)::INT AS count,
+        AVG(rating)::DECIMAL(3,2) AS avg_rating,
+        COUNT(id) FILTER (WHERE sentiment_label = 'positive')::INT AS positive_count,
+        COUNT(id) FILTER (WHERE sentiment_label = 'neutral')::INT AS neutral_count,
+        COUNT(id) FILTER (WHERE sentiment_label = 'negative')::INT AS negative_count,
+        MAX(created_at) AS latest_review_at,
+        COALESCE(VAR_SAMP(rating), 0.0)::DECIMAL(5,2) AS rating_variance
+      FROM reviews
+      WHERE product_id IS NOT NULL
+      GROUP BY product_id
+    ),
+    delivered_qty AS (
       SELECT
         oi.product_id,
-        p.seller_id,
         SUM(oi.quantity)::INT AS qty_sold
       FROM order_items oi
-      JOIN orders o   ON o.id  = oi.order_id
-      JOIN products p ON p.id  = oi.product_id
+      JOIN orders o ON o.id = oi.order_id
       WHERE o.status = 'delivered'
-      GROUP BY oi.product_id, p.seller_id
+      GROUP BY oi.product_id
     ),
     seller_total_qty AS (
       SELECT seller_id, SUM(qty_sold)::INT AS total_qty
-      FROM delivered_qty
+      FROM delivered_qty dq
+      JOIN products p ON p.id = dq.product_id
       GROUP BY seller_id
     )
     SELECT
@@ -99,8 +118,8 @@ async function getProductFeed({ lat, lng, radius = 50, category, q, grade, minPr
       u.trust_score AS seller_trust,
       u.latitude AS seller_lat,
       u.longitude AS seller_lng,
-      COALESCE(AVG(r.rating), 0)::DECIMAL(3,2) AS avg_rating,
-      COUNT(r.id)::INT AS review_count,
+      COALESCE(rs.count, 0)::INT AS review_count,
+      COALESCE(rs.avg_rating, 0)::DECIMAL(3,2) AS avg_rating,
       ROUND((${distanceExpr})::NUMERIC, 1) AS distance_km,
       COALESCE(dq.qty_sold, 0)::INT AS qty_sold,
       CASE
@@ -108,20 +127,30 @@ async function getProductFeed({ lat, lng, radius = 50, category, q, grade, minPr
           THEN ROUND((COALESCE(dq.qty_sold, 0)::DECIMAL / stq.total_qty * 100)::NUMERIC, 1)
         ELSE 0
       END AS sell_pct,
+      -- Review-Based Scores
+      ROUND((((5 * 4.0) + (COALESCE(rs.count, 0) * COALESCE(rs.avg_rating, 4.0))) / (5 + COALESCE(rs.count, 0)) * 20)::NUMERIC, 2) AS rating_score,
+      CASE WHEN COALESCE(rs.count, 0) > 0 THEN ROUND((COALESCE(rs.positive_count, 0) * 1.0 + COALESCE(rs.neutral_count, 0) * 0.5) / COALESCE(rs.count, 1) * 100, 2) ELSE 70.0 END AS sentiment_score,
+      CASE WHEN rs.latest_review_at IS NOT NULL THEN ROUND((100.0 / (1.0 + (EXTRACT(EPOCH FROM (NOW() - rs.latest_review_at)) / 86400.0) / 30.0))::NUMERIC, 2) ELSE 50.0 END AS recency_score,
+      CASE WHEN COALESCE(rs.count, 0) <= 1 THEN 100.0 ELSE ROUND(GREATEST(0.0, 100.0 * (1.0 - COALESCE(rs.rating_variance, 0.0) / 4.0))::NUMERIC, 2) END AS consistency_score,
+      ROUND((1.0 - EXP(-COALESCE(rs.count, 0)::DECIMAL / 10.0))::NUMERIC, 4) AS volume_confidence,
+      -- Combined Score
       ROUND((
-        COALESCE(stq.total_qty, 0) * 0.5
-        + COALESCE(AVG(r.rating), 0) * 10
-        + COALESCE(u.trust_score, 0) * 2
-      )::NUMERIC, 2) AS seller_score
+        (
+          0.40 * ROUND((((5 * 4.0) + (COALESCE(rs.count, 0) * COALESCE(rs.avg_rating, 4.0))) / (5 + COALESCE(rs.count, 0)) * 20)::NUMERIC, 2)
+          + 0.30 * CASE WHEN COALESCE(rs.count, 0) > 0 THEN ROUND((COALESCE(rs.positive_count, 0) * 1.0 + COALESCE(rs.neutral_count, 0) * 0.5) / COALESCE(rs.count, 1) * 100, 2) ELSE 70.0 END
+          + 0.15 * CASE WHEN rs.latest_review_at IS NOT NULL THEN ROUND((100.0 / (1.0 + (EXTRACT(EPOCH FROM (NOW() - rs.latest_review_at)) / 86400.0) / 30.0))::NUMERIC, 2) ELSE 50.0 END
+          + 0.15 * CASE WHEN COALESCE(rs.count, 0) <= 1 THEN 100.0 ELSE ROUND(GREATEST(0.0, 100.0 * (1.0 - COALESCE(rs.rating_variance, 0.0) / 4.0))::NUMERIC, 2) END
+        ) * ROUND((1.0 - EXP(-COALESCE(rs.count, 0)::DECIMAL / 10.0))::NUMERIC, 4)
+      )::NUMERIC, 2) AS recommendation_score
     FROM products p
     JOIN users u ON u.id = p.seller_id
     JOIN categories c ON c.id = p.category_id
-    LEFT JOIN reviews r ON r.product_id = p.id
+    LEFT JOIN review_stats rs ON rs.product_id = p.id
     LEFT JOIN delivered_qty    dq  ON dq.product_id = p.id
     LEFT JOIN seller_total_qty stq ON stq.seller_id = p.seller_id
     WHERE ${whereClause}
-    GROUP BY p.id, c.id, u.id, dq.qty_sold, stq.total_qty
-    ORDER BY seller_score DESC, sell_pct DESC, distance_km ASC
+    GROUP BY p.id, c.id, u.id, dq.qty_sold, stq.total_qty, rs.count, rs.avg_rating, rs.positive_count, rs.neutral_count, rs.latest_review_at, rs.rating_variance
+    ORDER BY recommendation_score DESC, distance_km ASC
     LIMIT $${params.length - 1} OFFSET $${params.length}
   `;
 
@@ -136,13 +165,21 @@ async function getProductById(productId) {
             u.trust_score AS seller_trust, u.farm_name, u.farm_desc,
             u.latitude AS seller_lat, u.longitude AS seller_lng,
             COALESCE(AVG(r.rating), 0)::DECIMAL(3,2) AS avg_rating,
-            COUNT(r.id)::INT AS review_count
+            COUNT(r.id)::INT AS review_count,
+            COALESCE(dq.qty_sold, 0)::INT AS qty_sold
      FROM products p
      JOIN users u ON u.id = p.seller_id
      JOIN categories c ON c.id = p.category_id
      LEFT JOIN reviews r ON r.product_id = p.id
+     LEFT JOIN (
+       SELECT oi.product_id, SUM(oi.quantity)::INT AS qty_sold
+       FROM order_items oi
+       JOIN orders o ON o.id = oi.order_id
+       WHERE o.status = 'delivered'
+       GROUP BY oi.product_id
+     ) dq ON dq.product_id = p.id
      WHERE p.id = $1
-     GROUP BY p.id, c.id, u.id`,
+     GROUP BY p.id, c.id, u.id, dq.qty_sold`,
     [productId]
   );
   if (!res.rows[0]) throw new NotFoundError('Product not found');
@@ -154,7 +191,8 @@ async function getSellerProducts(sellerId, page = 1, limit = 20) {
   const res = await db.query(
     `SELECT p.*, c.name AS category_name,
             COALESCE(AVG(r.rating), 0)::DECIMAL(3,2) AS avg_rating,
-            COUNT(r.id)::INT AS review_count
+            COUNT(r.id)::INT AS review_count,
+            COALESCE(COUNT(r.id) FILTER (WHERE r.rating >= 4 OR r.comment ~* '(good|great|nice|fresh|like|love|excellent|best|tasty|sweet|delicious|awesome|perfect|satisfied|happy)'), 0)::INT AS likes_count
      FROM products p
      JOIN categories c ON c.id = p.category_id
      LEFT JOIN reviews r ON r.product_id = p.id

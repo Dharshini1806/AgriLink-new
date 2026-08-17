@@ -126,14 +126,21 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 -- ─── REVIEWS ──────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS reviews (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  reviewer_id UUID NOT NULL REFERENCES users(id),
-  product_id  UUID REFERENCES products(id),
-  reviewee_id UUID REFERENCES users(id),
-  rating      INTEGER CHECK (rating BETWEEN 1 AND 5) NOT NULL,
-  comment     TEXT,
-  order_id    UUID REFERENCES orders(id),
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  reviewer_id     UUID NOT NULL REFERENCES users(id),
+  user_id         UUID REFERENCES users(id), -- alias
+  product_id      UUID REFERENCES products(id),
+  reviewee_id     UUID REFERENCES users(id),
+  rating          INTEGER CHECK (rating BETWEEN 1 AND 5) NOT NULL,
+  comment         TEXT,
+  review_text     TEXT, -- alias
+  sentiment       VARCHAR(20),
+  sentiment_score DECIMAL(5,2),
+  sentiment_label VARCHAR(20),
+  feedback_tags   TEXT[] DEFAULT '{}',
+  order_id        UUID REFERENCES orders(id),
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_reviews_product  ON reviews(product_id);

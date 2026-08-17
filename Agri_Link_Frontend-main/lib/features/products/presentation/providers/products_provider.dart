@@ -211,6 +211,28 @@ final productReviewsProvider =
   return List<Map<String, dynamic>>.from((res.data['data'] as List?) ?? []);
 });
 
+// ── Recommended Products ──────────────────────────────────
+final recommendedProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
+  final ds = ref.watch(productsRemoteDataSourceProvider);
+  return ds.getRecommendedProducts({});
+});
+
+// ── Recommendation Score Breakdown ──────────────────────
+final recommendationScoreProvider =
+    FutureProvider.family<Map<String, dynamic>, String>((ref, id) async {
+  final dio = ref.watch(dioProvider);
+  final res = await dio.get(ApiEndpoints.recommendationScore(id));
+  return Map<String, dynamic>.from(res.data);
+});
+
+// ── Product Review Summary ───────────────────────────────
+final productReviewSummaryProvider =
+    FutureProvider.family<Map<String, dynamic>, String>((ref, id) async {
+  final dio = ref.watch(dioProvider);
+  final res = await dio.get(ApiEndpoints.reviewSummary(id));
+  return Map<String, dynamic>.from(res.data);
+});
+
 // ── My Products (Seller) ──────────────────────────────────
 final sellerProductsProvider = FutureProvider<List<ProductModel>>((ref) async {
   final ds = ref.watch(productsRemoteDataSourceProvider);
@@ -235,4 +257,19 @@ final topSellerDetailsProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final ds = ref.watch(productsRemoteDataSourceProvider);
   return ds.getTopSellerDetails(limit: 20);
+});
+
+/// Public profile info for a farmer by ID
+final farmerProfileProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, id) async {
+  final dio = ref.watch(dioProvider);
+  final res = await dio.get(ApiEndpoints.publicProfile(id));
+  return Map<String, dynamic>.from(res.data);
+});
+
+/// List of products for a specific farmer by ID
+final farmerProductsProvider = FutureProvider.family<List<ProductModel>, String>((ref, sellerId) async {
+  final dio = ref.watch(dioProvider);
+  final res = await dio.get(ApiEndpoints.products, queryParameters: {'seller_id': sellerId});
+  final rawList = (res.data['data'] as List?) ?? [];
+  return rawList.map((item) => ProductModel.fromJson(item as Map<String, dynamic>)).toList();
 });

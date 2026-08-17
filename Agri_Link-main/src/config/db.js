@@ -66,6 +66,24 @@ async function testConnection() {
       CREATE INDEX IF NOT EXISTS idx_password_resets_email ON password_resets(email);
     `);
     logger.info('password_resets table checked/created');
+
+    // Alter reviews table to support sentiment and feedback tags
+    await client.query(`
+      ALTER TABLE reviews ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id);
+      ALTER TABLE reviews ADD COLUMN IF NOT EXISTS review_text TEXT;
+      ALTER TABLE reviews ADD COLUMN IF NOT EXISTS sentiment VARCHAR(20);
+      ALTER TABLE reviews ADD COLUMN IF NOT EXISTS sentiment_score DECIMAL(5,2);
+      ALTER TABLE reviews ADD COLUMN IF NOT EXISTS sentiment_label VARCHAR(20);
+      ALTER TABLE reviews ADD COLUMN IF NOT EXISTS feedback_tags TEXT[] DEFAULT '{}';
+      ALTER TABLE reviews ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+    `);
+    
+    // Backfill user_id and review_text for existing rows
+    await client.query(`
+      UPDATE reviews SET user_id = reviewer_id WHERE user_id IS NULL;
+      UPDATE reviews SET review_text = comment WHERE review_text IS NULL;
+    `);
+    logger.info('reviews table columns and backfill checked');
   } finally {
     client.release();
   }

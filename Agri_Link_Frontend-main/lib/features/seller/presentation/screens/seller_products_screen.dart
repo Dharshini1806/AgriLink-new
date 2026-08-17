@@ -304,6 +304,23 @@ class _ProductTile extends StatelessWidget {
                       ],
                     ),
                   ],
+                  if (product.likesCount != null && product.likesCount! > 0) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(Icons.favorite_rounded, size: 13, color: Color(0xFFE53935)),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${product.likesCount} ${product.likesCount == 1 ? "person" : "people"} liked this',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

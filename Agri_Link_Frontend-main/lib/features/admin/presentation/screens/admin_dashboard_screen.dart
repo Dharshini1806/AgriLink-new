@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/network/dio_client.dart';
@@ -22,6 +24,16 @@ final _pendingProductsProvider = FutureProvider<List<Map<String, dynamic>>>((ref
   return List<Map<String, dynamic>>.from(res.data as List? ?? []);
 });
 
+final _adminReviewStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final res = await ref.watch(dioProvider).get(ApiEndpoints.adminReviewsStats);
+  return res.data as Map<String, dynamic>;
+});
+
+final _adminReviewsListProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final res = await ref.watch(dioProvider).get(ApiEndpoints.adminReviews);
+  return List<Map<String, dynamic>>.from(res.data['data'] as List? ?? []);
+});
+
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
 
@@ -32,7 +44,7 @@ class AdminDashboardScreen extends ConsumerWidget {
     final pendingAsync = ref.watch(_pendingProductsProvider);
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
@@ -51,6 +63,7 @@ class AdminDashboardScreen extends ConsumerWidget {
               Tab(text: 'Overview'),
               Tab(text: 'Moderation'),
               Tab(text: 'Fraud'),
+              Tab(text: 'Reviews'),
             ],
             labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
           ),
@@ -223,6 +236,9 @@ class AdminDashboardScreen extends ConsumerWidget {
               },
             ),
           ),
+          
+          // ── REVIEWS TAB ────────────────────────────────
+          const _AdminReviewsTab(),
         ]),
       ),
     );
@@ -397,4 +413,333 @@ class _FraudSection extends StatelessWidget {
       ]),
     )),
   ]);
+}
+
+class _AdminReviewsTab extends ConsumerWidget {
+  const _AdminReviewsTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statsAsync = ref.watch(_adminReviewStatsProvider);
+    final listAsync = ref.watch(_adminReviewsListProvider);
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () async {
+        ref.invalidate(_adminReviewStatsProvider);
+        ref.invalidate(_adminReviewsListProvider);
+      },
+      child: statsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        error: (e, _) => Center(child: Text('$e')),
+        data: (stats) {
+          final summary = stats['summary'] as Map<String, dynamic>;
+          final highlyNeg = List<Map<String, dynamic>>.from(stats['highlyNegativeProducts'] as List? ?? []);
+          final positiveProds = List<Map<String, dynamic>>.from(stats['consistentlyPositiveProducts'] as List? ?? []);
+          
+          final posPct = (summary['sentimentSplit']['positive'] as num?)?.toDouble() ?? 0.0;
+          final neuPct = (summary['sentimentSplit']['neutral'] as num?)?.toDouble() ?? 0.0;
+          final negPct = (summary['sentimentSplit']['negative'] as num?)?.toDouble() ?? 0.0;
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border, width: 0.5),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Global Review Metrics', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _ReviewMetricCol('Total Reviews', '${summary['totalReviews'] ?? 0}'),
+                        _ReviewMetricCol('Avg Rating', '${summary['averageRating'] ?? 0.0} ★'),
+                      ],
+                    ),
+                    const Divider(height: 24),
+                    Text('Global Sentiment Split', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textSecondary)),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: SizedBox(
+                        height: 8,
+                        child: Row(
+                          children: [
+                            if (posPct > 0) Expanded(flex: posPct.round(), child: Container(color: const Color(0xFF2E7D32))),
+                            if (neuPct > 0) Expanded(flex: neuPct.round(), child: Container(color: const Color(0xFFFFA000))),
+                            if (negPct > 0) Expanded(flex: negPct.round(), child: Container(color: const Color(0xFFC62828))),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _LegendDot('Positive ($posPct%)', const Color(0xFF2E7D32)),
+                        _LegendDot('Neutral ($neuPct%)', const Color(0xFFFFA000)),
+                        _LegendDot('Negative ($negPct%)', const Color(0xFFC62828)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              if (highlyNeg.isNotEmpty) ...[
+                Text('🚨 Warning: Highly Negative Products', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.error)),
+                const SizedBox(height: 8),
+                ...highlyNeg.map((p) => _ProductStatusCard(product: p, isNegative: true)),
+                const SizedBox(height: 24),
+              ],
+
+              if (positiveProds.isNotEmpty) ...[
+                Text('🌟 Consistently Positive Products', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.success)),
+                const SizedBox(height: 8),
+                ...positiveProds.map((p) => _ProductStatusCard(product: p, isNegative: false)),
+                const SizedBox(height: 24),
+              ],
+
+              Text('Platform Reviews Log', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15)),
+              const SizedBox(height: 10),
+              listAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                error: (err, _) => Center(child: Text('Error loading reviews: $err')),
+                data: (reviews) => reviews.isEmpty
+                  ? Center(child: Text('No reviews submitted yet', style: GoogleFonts.poppins(color: AppColors.textHint)))
+                  : Column(
+                      children: reviews.map((r) => _AdminReviewTile(
+                        review: r,
+                        onDelete: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: Text('Delete review?', style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
+                              content: Text('Are you sure you want to delete this review? This action cannot be undone.', style: GoogleFonts.poppins()),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            try {
+                              await ref.read(dioProvider).delete(ApiEndpoints.deleteAdminReview(r['id'] as String));
+                              ref.invalidate(_adminReviewStatsProvider);
+                              ref.invalidate(_adminReviewsListProvider);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Review deleted successfully'), backgroundColor: AppColors.error),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Failed to delete review: $e'), backgroundColor: AppColors.error),
+                                );
+                              }
+                            }
+                          }
+                        },
+                      )).toList(),
+                    ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ReviewMetricCol extends StatelessWidget {
+  final String label, value;
+  const _ReviewMetricCol(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(value, style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary)),
+          Text(label, style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textHint, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegendDot extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _LegendDot(this.label, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: GoogleFonts.poppins(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+      ],
+    );
+  }
+}
+
+class _ProductStatusCard extends StatelessWidget {
+  final Map<String, dynamic> product;
+  final bool isNegative;
+  const _ProductStatusCard({required this.product, required this.isNegative});
+
+  @override
+  Widget build(BuildContext context) {
+    final images = (product['image_urls'] as List?)?.cast<String>() ?? [];
+    final imgUrl = images.isNotEmpty ? images.first : null;
+    final color = isNegative ? AppColors.error : AppColors.success;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3), width: 0.8),
+      ),
+      child: Row(
+        children: [
+          if (imgUrl != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: CachedNetworkImage(
+                imageUrl: '$imgUrl?f_auto,q_auto,w_80',
+                width: 44, height: 44, fit: BoxFit.cover,
+              ),
+            )
+          else
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(color: AppColors.surfaceVariant, borderRadius: BorderRadius.circular(8)),
+              child: const Icon(Icons.eco_outlined, size: 20, color: AppColors.textHint),
+            ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(product['name'] as String? ?? 'Product', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(
+                  isNegative 
+                    ? 'Rating: ${product['avg_rating']} ★ (${product['review_count']} reviews) • ${product['negative_pct']}% Negative sentiment'
+                    : 'Rating: ${product['avg_rating']} ★ (${product['review_count']} reviews) • ${product['positive_pct']}% Positive sentiment',
+                  style: GoogleFonts.poppins(fontSize: 10, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminReviewTile extends StatelessWidget {
+  final Map<String, dynamic> review;
+  final VoidCallback onDelete;
+  const _AdminReviewTile({required this.review, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    final String label = review['sentiment_label'] as String? ?? 'neutral';
+    Color bg;
+    Color fg;
+    switch (label.toLowerCase()) {
+      case 'positive':
+        bg = const Color(0xFFE8F5E9);
+        fg = const Color(0xFF2E7D32);
+        break;
+      case 'neutral':
+        bg = const Color(0xFFFFF8E1);
+        fg = const Color(0xFFF57F17);
+        break;
+      case 'negative':
+        bg = const Color(0xFFFFEBEE);
+        fg = const Color(0xFFC62828);
+        break;
+      default:
+        bg = AppColors.surfaceVariant;
+        fg = AppColors.textHint;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Buyer: ${review['reviewer_name'] ?? 'User'}', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text('Product: ${review['product_name'] ?? 'General Review'}', style: GoogleFonts.poppins(fontSize: 10, color: AppColors.textHint)),
+                  ],
+                ),
+              ),
+              RatingBarIndicator(
+                rating: (review['rating'] as num?)?.toDouble() ?? 0.0,
+                itemSize: 12,
+                itemBuilder: (_, __) => const Icon(Icons.star_rounded, color: Colors.amber),
+                unratedColor: AppColors.border,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (review['comment'] != null && (review['comment'] as String).isNotEmpty)
+            Text(review['comment'] as String, style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textSecondary)),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
+                    child: Text(label.toUpperCase(), style: GoogleFonts.poppins(fontSize: 8, color: fg, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 6),
+                  if (review['sentiment_score'] != null)
+                    Text('Score: ${review['sentiment_score']}', style: GoogleFonts.poppins(fontSize: 9, color: AppColors.textHint, fontWeight: FontWeight.w600)),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: onDelete,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

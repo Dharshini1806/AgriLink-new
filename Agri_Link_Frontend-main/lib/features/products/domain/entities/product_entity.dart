@@ -36,6 +36,7 @@ class ProductEntity extends Equatable {
   final double? sellPct;      // % of seller's total sales this product accounts for
   final double? sellerScore;  // composite seller performance score (for feed ordering)
   final int? qtySold;         // total units of this product delivered
+  final int? likesCount;      // total people who liked the product based on feedback
 
   const ProductEntity({
     required this.id,
@@ -69,6 +70,7 @@ class ProductEntity extends Equatable {
     this.sellPct,
     this.sellerScore,
     this.qtySold,
+    this.likesCount,
   });
 
   dynamic operator [](String key) {
@@ -135,6 +137,8 @@ class ProductEntity extends Equatable {
         return sellerScore;
       case 'qty_sold':
         return qtySold;
+      case 'likes_count':
+        return likesCount;
       default:
         return null;
     }
@@ -155,5 +159,6 @@ class ProductEntity extends Equatable {
         sellPct,
         sellerScore,
         qtySold,
+        likesCount,
       ];
 }

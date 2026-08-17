@@ -36,4 +36,31 @@ async function getFraudSignals(req, res, next) {
   try { res.json(await adminService.getFraudSignals()); } catch (e) { next(e); }
 }
 
-module.exports = { getDashboard, listUsers, banUser, unbanUser, getPendingProducts, moderateProduct, getRevenue, getFraudSignals };
+async function listReviews(req, res, next) {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const result = await adminService.listReviews({ page, limit });
+    res.json(result);
+  } catch (e) { next(e); }
+}
+
+async function deleteReview(req, res, next) {
+  try {
+    await adminService.deleteReview(req.params.id);
+    res.json({ message: 'Review deleted successfully' });
+  } catch (e) { next(e); }
+}
+
+async function getReviewStats(req, res, next) {
+  try {
+    const result = await adminService.getReviewStats();
+    res.json(result);
+  } catch (e) { next(e); }
+}
+
+module.exports = {
+  getDashboard, listUsers, banUser, unbanUser,
+  getPendingProducts, moderateProduct, getRevenue, getFraudSignals,
+  listReviews, deleteReview, getReviewStats
+};

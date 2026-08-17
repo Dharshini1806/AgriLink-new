@@ -1,4 +1,6 @@
 const productService = require('./products.service');
+const recommendationService = require('./recommendation.service');
+const reviewService = require('../reviews/reviews.service');
 
 async function getFeed(req, res, next) {
   try {
@@ -83,4 +85,32 @@ async function getTopSellerDetails(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getFeed, getOne, getMyProducts, create, update, remove, getCategories, toggleWishlist, getWishlist, getTopSellers, getTopSellerDetails };
+async function getRecommended(req, res, next) {
+  try {
+    const userId = req.user?.id;
+    const products = await recommendationService.getRecommendedProducts(userId, req.query);
+    res.json({ products });
+  } catch (err) { next(err); }
+}
+
+async function getRecommendationScore(req, res, next) {
+  try {
+    const scoreBreakdown = await recommendationService.getProductRecommendationBreakdown(req.params.id);
+    if (!scoreBreakdown) return res.status(404).json({ error: 'Product not found' });
+    res.json(scoreBreakdown);
+  } catch (err) { next(err); }
+}
+
+async function getReviewSummary(req, res, next) {
+  try {
+    const summary = await reviewService.getProductReviewSummary(req.params.id);
+    res.json(summary);
+  } catch (err) { next(err); }
+}
+
+module.exports = {
+  getFeed, getOne, getMyProducts, create, update, remove,
+  getCategories, toggleWishlist, getWishlist, getTopSellers,
+  getTopSellerDetails, getRecommended, getRecommendationScore,
+  getReviewSummary
+};

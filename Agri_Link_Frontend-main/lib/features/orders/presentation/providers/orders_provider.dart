@@ -148,6 +148,7 @@ class OrdersNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>
     String? revieweeId,
     required int rating,
     String? comment,
+    List<String> feedbackTags = const [],
   }) async {
     try {
       await _dio.post(ApiEndpoints.reviews, data: {
@@ -156,6 +157,7 @@ class OrdersNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>
         if (revieweeId != null) 'revieweeId': revieweeId,
         'rating': rating,
         if (comment != null && comment.isNotEmpty) 'comment': comment,
+        'feedbackTags': feedbackTags,
       });
       await load();
       return true;

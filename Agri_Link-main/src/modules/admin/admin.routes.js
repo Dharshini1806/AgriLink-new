@@ -16,4 +16,9 @@ router.patch('/products/:id/moderate',      controller.moderateProduct);
 router.get('/analytics/revenue',            controller.getRevenue);
 router.get('/fraud-signals',                controller.getFraudSignals);
 
+// Review Management routes
+router.get('/reviews/stats',                controller.getReviewStats);
+router.get('/reviews',                      controller.listReviews);
+router.delete('/reviews/:id',               controller.deleteReview);
+
 module.exports = router;

@@ -125,14 +125,7 @@ class _FarmerCard extends StatelessWidget {
     }
   }
 
-  String get _rankLabel {
-    switch (rank) {
-      case 1: return '?? #1';
-      case 2: return '?? #2';
-      case 3: return '?? #3';
-      default: return '#$rank';
-    }
-  }
+  String get _rankLabel => '#$rank';
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +141,7 @@ class _FarmerCard extends StatelessWidget {
     final sellerId = seller['id'] as String? ?? '';
 
     return GestureDetector(
-      onTap: () => context.push('/seller/$sellerId'),
+      onTap: () => context.push('/farmer/$sellerId'),
       child: Container(
         width: 148,
         decoration: BoxDecoration(

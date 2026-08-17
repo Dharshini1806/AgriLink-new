@@ -27,6 +27,21 @@ class _ReviewDialogState extends ConsumerState<ReviewDialog> {
   double _rating = 5.0;
   final _commentC = TextEditingController();
   bool _submitting = false;
+  final Set<String> _selectedTags = {};
+
+  static const _positiveTags = [
+    'Good Quality',
+    'Excellent Product',
+    'Value for Money',
+    'Fast Delivery'
+  ];
+
+  static const _negativeTags = [
+    'Poor Quality',
+    'Not as Expected',
+    'Damaged Product',
+    'Wrong Product'
+  ];
 
   @override
   void dispose() {
@@ -42,6 +57,7 @@ class _ReviewDialogState extends ConsumerState<ReviewDialog> {
           revieweeId: widget.sellerId,
           rating: _rating.round(),
           comment: _commentC.text.trim(),
+          feedbackTags: _selectedTags.toList(),
         );
     setState(() => _submitting = false);
 
@@ -61,33 +77,42 @@ class _ReviewDialogState extends ConsumerState<ReviewDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final tags = _rating >= 4 ? _positiveTags : _negativeTags;
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text('Rate your order', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'How was your experience with ${widget.sellerName}?',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 13),
+            Center(
+              child: Text(
+                'How was your experience with ${widget.sellerName}?',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 13),
+              ),
             ),
             const SizedBox(height: 16),
-            RatingBar.builder(
-              initialRating: 5,
-              minRating: 1,
-              direction: Axis.horizontal,
-              allowHalfRating: false,
-              itemCount: 5,
-              itemPadding: const EdgeInsets.symmetric(horizontal: 4.0),
-              itemBuilder: (context, _) => const Icon(
-                Icons.star_rounded,
-                color: Colors.amber,
+            Center(
+              child: RatingBar.builder(
+                initialRating: 5,
+                minRating: 1,
+                direction: Axis.horizontal,
+                allowHalfRating: false,
+                itemCount: 5,
+                itemPadding: const EdgeInsets.symmetric(horizontal: 4.0),
+                itemBuilder: (context, _) => const Icon(
+                  Icons.star_rounded,
+                  color: Colors.amber,
+                ),
+                onRatingUpdate: (rating) {
+                  setState(() {
+                    _rating = rating;
+                    _selectedTags.clear();
+                  });
+                },
               ),
-              onRatingUpdate: (rating) {
-                setState(() => _rating = rating);
-              },
             ),
             const SizedBox(height: 16),
             TextField(
@@ -101,6 +126,42 @@ class _ReviewDialogState extends ConsumerState<ReviewDialog> {
                 fillColor: AppColors.surfaceVariant,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Select feedback tags:',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: tags.map((tag) {
+                final isSelected = _selectedTags.contains(tag);
+                return ChoiceChip(
+                  label: Text(
+                    tag,
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                    ),
+                  ),
+                  selected: isSelected,
+                  selectedColor: AppColors.primary,
+                  backgroundColor: AppColors.surfaceVariant,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide.none),
+                  onSelected: (selected) {
+                    setState(() {
+                      if (selected) {
+                        _selectedTags.add(tag);
+                      } else {
+                        _selectedTags.remove(tag);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
             ),
           ],
         ),

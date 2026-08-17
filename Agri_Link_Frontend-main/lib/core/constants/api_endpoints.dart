@@ -75,6 +75,7 @@ class ApiEndpoints {
 
   // ── Products ──────────────────────────────────────────────
   static const String products     = '/api/products';
+  static const String recommended  = '/api/products/recommended';
   static const String categories   = '/api/products/categories';
   static const String wishlist     = '/api/products/wishlist';
   static const String myProducts   = '/api/products/mine';
@@ -83,6 +84,8 @@ class ApiEndpoints {
   static String productById(String id) => '/api/products/$id';
   static String toggleWishlist(String id) => '/api/products/$id/wishlist';
   static String productReviews(String id) => '/api/reviews/product/$id';
+  static String recommendationScore(String id) => '/api/products/$id/recommendation-score';
+  static String reviewSummary(String id) => '/api/products/$id/review-summary';
 
   // ── Orders ────────────────────────────────────────────────
   static const String placeOrder    = '/api/orders';
@@ -100,6 +103,9 @@ class ApiEndpoints {
 
   // ── Reviews ───────────────────────────────────────────────
   static const String reviews       = '/api/reviews';
+  static String reviewEligibility(String id) => '/api/reviews/eligibility/$id';
+  static String analyzeReview(String id) => '/api/reviews/$id/analyze';
+  static String reanalyzeProductSentiment(String id) => '/api/reviews/product/$id/reanalyze';
 
   // ── Chat ──────────────────────────────────────────────────
   static String chatHistory(String orderId) => '/api/chat/$orderId/history';
@@ -116,7 +122,10 @@ class ApiEndpoints {
   static const String adminPending    = '/api/admin/products/pending';
   static const String adminRevenue    = '/api/admin/analytics/revenue';
   static const String adminFraud      = '/api/admin/fraud-signals';
+  static const String adminReviews      = '/api/admin/reviews';
+  static const String adminReviewsStats = '/api/admin/reviews/stats';
   static String banUser(String id) => '/api/admin/users/$id/ban';
   static String unbanUser(String id) => '/api/admin/users/$id/unban';
   static String moderateProduct(String id) => '/api/admin/products/$id/moderate';
+  static String deleteAdminReview(String id) => '/api/admin/reviews/$id';
 }
